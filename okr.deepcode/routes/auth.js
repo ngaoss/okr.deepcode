@@ -10,6 +10,17 @@ function generateAvatar(seed) {
 }
 
 router.post('/register', async (req, res) => {
+  const configuredRegisterKey = process.env.REGISTER_API_KEY;
+  const providedRegisterKey = req.header('x-api-key');
+
+  if (!configuredRegisterKey) {
+    return res.status(500).json({ message: 'REGISTER_API_KEY is not configured' });
+  }
+
+  if (!providedRegisterKey || providedRegisterKey !== configuredRegisterKey) {
+    return res.status(403).json({ message: 'Invalid API key for registration' });
+  }
+
   const { name, email, password, role, department, avatar } = req.body;
   if (!email || !password || !name) return res.status(400).json({ message: 'Missing fields' });
   try {

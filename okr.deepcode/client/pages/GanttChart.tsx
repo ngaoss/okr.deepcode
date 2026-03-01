@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { projectService, sprintService, taskAgileService, featureService } from '../services/projectService';
+import { useAuth } from '../context/AuthContext';
 
 // Native Date Helpers
 const addDays = (date, days) => {
@@ -31,6 +32,11 @@ const formatDate = (date, pattern) => {
 };
 
 const GanttChart = () => {
+    const { user: currentUser } = useAuth();
+    const role = currentUser?.role || '';
+    const isEmployee = role === 'NHÂN VIÊN';
+    const canManageGantt = !isEmployee;
+
     // --- State ---
     const [projects, setProjects] = useState([]);
     const [selectedProject, setSelectedProject] = useState(null);
@@ -91,7 +97,10 @@ const GanttChart = () => {
 
             const fullTree = [];
             for (const sprint of (sprints || [])) {
-                const tasks = await taskAgileService.getTasksBySprint(sprint._id).catch(() => []);
+                let tasks = await taskAgileService.getTasksBySprint(sprint._id).catch(() => []);
+                if (isEmployee) {
+                    tasks = tasks.filter(task => task.assigneeName === currentUser?.name);
+                }
 
                 const sprintNode = {
                     ...sprint,
@@ -159,7 +168,7 @@ const GanttChart = () => {
         if (selectedProject?._id) {
             buildHierarchy(selectedProject._id);
         }
-    }, [selectedProject, buildHierarchy]);
+    }, [selectedProject, buildHierarchy, isEmployee, currentUser?.name]);
 
     // --- Timeline Logic ---
     const { units, timeRange } = useMemo(() => {
@@ -572,13 +581,21 @@ const GanttChart = () => {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <select
-                        className="bg-slate-100 border-none rounded-xl px-4 py-2.5 font-bold text-sm text-slate-700 outline-none focus:ring-2 ring-indigo-500/20"
-                        value={selectedProject?._id || ''}
-                        onChange={(e) => setSelectedProject(projects.find(p => p._id === e.target.value))}
-                    >
-                        {projects.map(p => <option key={p._id} value={p._id}>{p.title}</option>)}
-                    </select>
+                    {projects.length > 1 ? (
+                        <select
+                            className="bg-slate-100 border-none rounded-xl px-4 py-2.5 font-bold text-sm text-slate-700 outline-none focus:ring-2 ring-indigo-500/20"
+                            value={selectedProject?._id || ''}
+                            onChange={(e) => setSelectedProject(projects.find(p => p._id === e.target.value))}
+                        >
+                            {projects.map(p => <option key={p._id} value={p._id}>{p.title}</option>)}
+                        </select>
+                    ) : (
+                        projects.length === 1 && (
+                            <div className="bg-slate-100 rounded-xl px-4 py-2.5 font-bold text-sm text-indigo-700 border border-slate-200">
+                                {projects[0].title}
+                            </div>
+                        )
+                    )}
 
                     <div className="flex bg-slate-100 p-1 rounded-xl">
                         <button
@@ -621,6 +638,14 @@ const GanttChart = () => {
                     </div>
                 </div>
             </header>
+
+            {selectedProject && selectedProject.description && (
+                <div className="bg-indigo-50/70 px-8 py-2.5 border-b border-indigo-100 flex items-center gap-2 shrink-0">
+                    <span className="material-icons text-indigo-500 text-sm">info</span>
+                    <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mr-3">Mô tả dự án:</p>
+                    <p className="text-xs text-slate-600 italic">{selectedProject.description}</p>
+                </div>
+            )}
 
             <div className="flex-1 flex overflow-hidden relative">
                 {/* --- 1. Sidebar (Task Tree) --- */}
@@ -794,7 +819,7 @@ const GanttChart = () => {
                                         className={`absolute top-2 bottom-4 rounded-xl transition-all shadow-sm border border-white/40 group-hover:shadow-md cursor-pointer overflow-hidden ${getStatusColor(row.status, row.type, row.priority, row.endDate)
                                             } ${dragging?.id === row.id || resizing?.id === row.id ? 'opacity-70 scale-[1.02] ring-4 ring-indigo-500/30' : ''} ${criticalPathIds.has(row.id) ? 'ring-2 ring-rose-500 ring-offset-2' : ''
                                             }`}
-                                        onMouseDown={(e) => handleDragStart(e, row)}
+                                        onMouseDown={(e) => canManageGantt && handleDragStart(e, row)}
                                         onMouseMove={(e) => {
                                             if (!dragging && !resizing) {
                                                 setTooltipPos({ x: e.clientX, y: e.clientY - 15 });
@@ -827,7 +852,7 @@ const GanttChart = () => {
                                         </div>
 
                                         {/* Resize Handle */}
-                                        {(row.type === 'TASK' || row.type === 'SPRINT') && (
+                                        {canManageGantt && (row.type === 'TASK' || row.type === 'SPRINT') && (
                                             <div
                                                 className="absolute top-0 right-0 bottom-0 w-2 hover:bg-white/40 cursor-ew-resize flex items-center justify-center group/resize"
                                                 onMouseDown={(e) => handleResizeStart(e, row)}

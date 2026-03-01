@@ -117,12 +117,12 @@ const App: React.FC = () => {
             </ProtectedRoute>
           } />
           <Route path="/table" element={
-            <ProtectedRoute>
+            <ProtectedRoute restrictEmployee>
               <Layout><TableView /></Layout>
             </ProtectedRoute>
           } />
           <Route path="/project-notes" element={
-            <ProtectedRoute>
+            <ProtectedRoute restrictEmployee>
               <Layout><Notes /></Layout>
             </ProtectedRoute>
           } />

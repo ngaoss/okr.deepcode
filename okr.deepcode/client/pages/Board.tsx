@@ -1,25 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { projectService, sprintService, taskAgileService, featureService } from '../services/projectService';
+import { userService } from '../services/userService';
+import { useAuth } from '../context/AuthContext';
 
 const Board = () => {
+    const { user: currentUser } = useAuth();
+    const role = currentUser?.role || '';
+    const isAdmin = role === 'QUẢN TRỊ VIÊN';
+    const isManager = role === 'TRƯỞNG PHÒNG';
+    const isLeader = role === 'TRƯỞNG NHÓM';
+    const canManageBoard = isAdmin || isManager || isLeader;
+
     const [projects, setProjects] = useState([]);
     const [selectedProject, setSelectedProject] = useState(null);
     const [sprints, setSprints] = useState([]);
     const [selectedSprint, setSelectedSprint] = useState(null);
     const [tasks, setTasks] = useState([]);
+    const [users, setUsers] = useState<any[]>([]);
     const [activeFeatures, setActiveFeatures] = useState([]);
     const [isAddingTask, setIsAddingTask] = useState(false);
     const [editingTask, setEditingTask] = useState(null);
+    const [showAssigneeError, setShowAssigneeError] = useState(false);
     const [newTask, setNewTask] = useState({
         title: '',
         featureId: '',
         description: '',
         assigneeName: '',
-        estimateTime: 0,
-        progress: 0,
         taskType: 'FEATURE',
         startDate: '',
-        endDate: '',
+        durationDays: 1,
         dependencies: []
     });
 
@@ -32,7 +41,17 @@ const Board = () => {
 
     useEffect(() => {
         fetchProjects();
+        fetchUsers();
     }, []);
+
+    const fetchUsers = async () => {
+        try {
+            const data = await userService.getUsers();
+            setUsers(data || []);
+        } catch (err) {
+            console.error('Lỗi lấy danh sách user:', err);
+        }
+    };
 
     useEffect(() => {
         if (selectedProject) {
@@ -49,7 +68,7 @@ const Board = () => {
 
     const fetchProjects = async () => {
         try {
-            const data = await projectService.getProjects() || [];
+            const data = await projectService.getProjects(true) || [];
             setProjects(data);
             if (data.length > 0 && !selectedProject) setSelectedProject(data[0]);
         } catch (err) {
@@ -90,6 +109,52 @@ const Board = () => {
         }
     };
 
+    // Tính toán endDate từ startDate + durationDays
+    const calcEndDate = (startDate: string, durationDays: number): string => {
+        const start = startDate ? new Date(startDate) : new Date();
+        const end = new Date(start);
+        end.setDate(end.getDate() + (durationDays - 1));
+        return end.toISOString().split('T')[0];
+    };
+
+    // Tính số ngày đã trôi qua kể từ startDate
+    const calcDaysElapsed = (startDate: string): number => {
+        if (!startDate) return 0;
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const diff = Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+        return Math.max(0, diff);
+    };
+
+    // Logic cảnh báo deadline (giống GanttChart)
+    const getDeadlineWarning = (task: any): { isWarning: boolean; isOverdue: boolean; diffDays: number } => {
+        if (!task.endDate) return { isWarning: false, isOverdue: false, diffDays: Infinity };
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const deadline = new Date(task.endDate);
+        deadline.setHours(0, 0, 0, 0);
+        const diffDays = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        const isOverdue = diffDays < 0 && task.status !== 'DONE';
+        let isWarning = false;
+        if (task.status === 'TODO' && diffDays <= 14 && diffDays >= 0) isWarning = true;
+        if (task.status === 'IN_PROGRESS' && diffDays <= 10 && diffDays >= 0) isWarning = true;
+        if (task.status === 'REVIEW' && diffDays <= 7 && diffDays >= 0) isWarning = true;
+        return { isWarning, isOverdue, diffDays };
+    };
+
+    const emptyTask = () => ({
+        title: '',
+        featureId: '',
+        description: '',
+        assigneeName: '',
+        taskType: '',
+        startDate: '',
+        durationDays: 1,
+        dependencies: []
+    });
+
     const handleUpdateTaskStatus = async (taskId, newStatus) => {
         try {
             const updated = await taskAgileService.updateTask(taskId, { status: newStatus });
@@ -101,21 +166,56 @@ const Board = () => {
 
     const handleCreateTask = async (e) => {
         e.preventDefault();
+        // Validate: phải chọn nhân viên
+        if (!newTask.assigneeName) {
+            setShowAssigneeError(true);
+            return;
+        }
+        // Validate: phải chọn feature
+        if (!newTask.featureId) {
+            alert('Vui lòng chọn Feature cho công việc!');
+            return;
+        }
+        // Validate: durationDays >= 1
+        if (!newTask.durationDays || newTask.durationDays < 1) {
+            alert('Số ngày hết hạn phải ít nhất là 1!');
+            return;
+        }
+
+        // Tính toán endDate
+        const resolvedStartDate = newTask.startDate || new Date().toISOString().split('T')[0];
+        const resolvedEndDate = calcEndDate(resolvedStartDate, newTask.durationDays);
+
+        const taskPayload = {
+            title: newTask.title,
+            featureId: newTask.featureId,
+            description: newTask.description,
+            assigneeName: newTask.assigneeName,
+            taskType: newTask.taskType,
+            startDate: resolvedStartDate,
+            endDate: resolvedEndDate,
+            durationDays: newTask.durationDays,
+            estimateTime: 0,
+            progress: 0,
+            dependencies: newTask.dependencies
+        };
+
         try {
             if (editingTask) {
-                const data = await taskAgileService.updateTask(editingTask._id, newTask);
+                const data = await taskAgileService.updateTask(editingTask._id, taskPayload);
                 setTasks(tasks.map(t => t._id === data._id ? data : t));
                 setEditingTask(null);
             } else {
                 const data = await taskAgileService.createTask({
-                    ...newTask,
+                    ...taskPayload,
                     projectId: selectedProject._id,
                     sprintId: selectedSprint._id
                 });
                 setTasks([...tasks, data]);
             }
             setIsAddingTask(false);
-            setNewTask({ title: '', featureId: '', description: '', assigneeName: '', estimateTime: 0, progress: 0, taskType: 'FEATURE', startDate: '', endDate: '', dependencies: [] });
+            setShowAssigneeError(false);
+            setNewTask(emptyTask());
         } catch (err) {
             alert('Lỗi lưu task: ' + err.message);
         }
@@ -133,16 +233,21 @@ const Board = () => {
 
     const handleEditTask = (task) => {
         setEditingTask(task);
+        // Tính lại durationDays từ startDate và endDate nếu có
+        let durationDays = task.durationDays || 1;
+        if (task.startDate && task.endDate && !task.durationDays) {
+            const start = new Date(task.startDate);
+            const end = new Date(task.endDate);
+            durationDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+        }
         setNewTask({
             title: task.title,
             featureId: task.featureId,
             description: task.description,
             assigneeName: task.assigneeName,
-            estimateTime: task.estimateTime,
-            progress: task.progress || 0,
             taskType: task.taskType || 'FEATURE',
             startDate: task.startDate ? task.startDate.split('T')[0] : '',
-            endDate: task.endDate ? task.endDate.split('T')[0] : '',
+            durationDays,
             dependencies: task.dependencies || []
         });
         setIsAddingTask(true);
@@ -158,13 +263,21 @@ const Board = () => {
                     </div>
                     <div className="h-8 w-px bg-slate-200"></div>
                     <div className="flex gap-2">
-                        <select
-                            className="text-sm border-none bg-slate-50 rounded-lg px-3 py-1.5 font-bold text-slate-700"
-                            value={selectedProject?._id || ''}
-                            onChange={(e) => setSelectedProject(projects.find(p => p._id === e.target.value))}
-                        >
-                            {projects.map(p => <option key={p._id} value={p._id}>{p.title}</option>)}
-                        </select>
+                        {projects.length > 1 ? (
+                            <select
+                                className="text-sm border-none bg-slate-50 rounded-lg px-3 py-1.5 font-bold text-slate-700 shadow-sm"
+                                value={selectedProject?._id || ''}
+                                onChange={(e) => setSelectedProject(projects.find(p => p._id === e.target.value))}
+                            >
+                                {projects.map(p => <option key={p._id} value={p._id}>{p.title}</option>)}
+                            </select>
+                        ) : (
+                            projects.length === 1 && (
+                                <div className="text-sm px-3 py-1.5 bg-slate-50 rounded-lg font-bold text-indigo-700 border border-slate-200">
+                                    {projects[0].title}
+                                </div>
+                            )
+                        )}
                         <select
                             className="text-sm border-none bg-indigo-50 rounded-lg px-3 py-1.5 font-bold text-indigo-700"
                             value={selectedSprint?._id || ''}
@@ -174,103 +287,163 @@ const Board = () => {
                         </select>
                     </div>
                 </div>
-                <button
-                    onClick={() => { setEditingTask(null); setNewTask({ title: '', featureId: '', description: '', assigneeName: '', estimateTime: 0, progress: 0, taskType: 'FEATURE', startDate: '', endDate: '', dependencies: [] }); setIsAddingTask(true); }}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition text-sm"
-                >
-                    + Thêm Task mới
-                </button>
+                {canManageBoard && (
+                    <button
+                        onClick={() => { setEditingTask(null); setNewTask(emptyTask()); setIsAddingTask(true); }}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition text-sm"
+                    >
+                        + Thêm Task mới
+                    </button>
+                )}
             </div>
+
+            {selectedProject && (selectedProject.description || selectedProject.assignedLeaderId) && (
+                <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 animate-in fade-in slide-in-from-top-2 shrink-0">
+                    {selectedProject.description && (
+                        <>
+                            <div className="flex items-center gap-2 mb-1">
+                                <span className="material-icons text-indigo-500 text-sm">info</span>
+                                <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Mô tả dự án</p>
+                            </div>
+                            <p className="text-sm text-slate-600 italic ml-6">{selectedProject.description}</p>
+                        </>
+                    )}
+                    {selectedProject.assignedLeaderId && (
+                        <div className={`${selectedProject.description ? 'ml-6 mt-1' : ''} flex items-center gap-2`}>
+                            <span className="material-icons text-[14px] text-amber-500">manage_accounts</span>
+                            <span className="text-xs text-slate-500">Trưởng nhóm phụ trách:</span>
+                            <strong className="text-xs text-amber-600">{selectedProject.assignedLeaderId?.name || 'Đã gán'}</strong>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {isAddingTask && (
                 <div className="bg-white p-6 rounded-xl shadow-lg border-2 border-indigo-100 shrink-0">
                     <h2 className="text-lg font-bold mb-4">Phân rã Task từ Feature</h2>
-                    <form onSubmit={handleCreateTask} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <input
-                            required
-                            className="px-4 py-2 border rounded-lg text-sm"
-                            placeholder="Tên công việc (Task)..."
-                            value={newTask.title}
-                            onChange={e => setNewTask({ ...newTask, title: e.target.value })}
-                        />
-                        <select
-                            required
-                            className="px-4 py-2 border rounded-lg text-sm"
-                            value={newTask.featureId}
-                            onChange={e => setNewTask({ ...newTask, featureId: e.target.value })}
-                        >
-                            <option value="">Chọn Feature...</option>
-                            {activeFeatures.filter(f => f.sprintId === selectedSprint?._id).map(f => (
-                                <option key={f._id} value={f._id}>{f.title}</option>
-                            ))}
-                        </select>
-                        <select
-                            className="px-4 py-2 border rounded-lg text-sm"
-                            value={newTask.taskType}
-                            onChange={e => setNewTask({ ...newTask, taskType: e.target.value })}
-                        >
-                            <option value="FEATURE">Công việc</option>
-                            <option value="BUG">Lỗi (Bug)</option>
-                            <option value="MEETING">Họp hành</option>
-                            <option value="MILESTONE">Cột mốc</option>
-                        </select>
-                        <input
-                            className="px-4 py-2 border rounded-lg text-sm"
-                            placeholder="Người thực hiện..."
-                            value={newTask.assigneeName}
-                            onChange={e => setNewTask({ ...newTask, assigneeName: e.target.value })}
-                        />
-
+                    <form onSubmit={handleCreateTask} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                        {/* Tên công việc */}
                         <div className="flex flex-col gap-1">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase">Ngày bắt đầu</label>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase">Tên công việc <span className="text-red-400">*</span></label>
+                            <input
+                                required
+                                className="px-3 py-2 border rounded-lg text-sm h-[40px]"
+                                placeholder="Nhập tên công việc..."
+                                value={newTask.title}
+                                onChange={e => setNewTask({ ...newTask, title: e.target.value })}
+                            />
+                        </div>
+                        {/* Chọn Feature */}
+                        <div className="flex flex-col gap-1">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase">Feature <span className="text-red-400">*</span></label>
+                            <select
+                                required
+                                className="px-3 py-2 border rounded-lg text-sm h-[40px]"
+                                value={newTask.featureId}
+                                onChange={e => setNewTask({ ...newTask, featureId: e.target.value })}
+                                style={{ color: !newTask.featureId ? '#9ca3af' : '' }}
+                            >
+                                <option value="" disabled style={{ color: '#9ca3af', fontStyle: 'italic' }}>— Chọn Feature —</option>
+                                {activeFeatures.filter(f => f.sprintId === selectedSprint?._id).map(f => (
+                                    <option key={f._id} value={f._id} style={{ color: '#1e293b' }}>{f.title}</option>
+                                ))}
+                            </select>
+                        </div>
+                        {/* Loại công việc */}
+                        <div className="flex flex-col gap-1">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase">Loại công việc <span className="text-red-400">*</span></label>
+                            <select
+                                required
+                                className="px-3 py-2 border rounded-lg text-sm h-[40px]"
+                                value={newTask.taskType}
+                                onChange={e => setNewTask({ ...newTask, taskType: e.target.value })}
+                                style={{ color: !newTask.taskType ? '#9ca3af' : '' }}
+                            >
+                                <option value="" disabled style={{ color: '#9ca3af', fontStyle: 'italic' }}>— Loại công việc —</option>
+                                <option value="BUG" style={{ color: '#1e293b' }}>Lỗi (Bug)</option>
+                                <option value="MEETING" style={{ color: '#1e293b' }}>Họp hành</option>
+                                <option value="MILESTONE" style={{ color: '#1e293b' }}>Cột mốc</option>
+                            </select>
+                        </div>
+                        {/* Ngày bắt đầu */}
+                        <div className="flex flex-col gap-1">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Ngày bắt đầu <span className="text-slate-300 font-normal normal-case">(bỏ trống để bắt đầu ngay hôm nay)</span></label>
                             <input
                                 type="date"
-                                className="px-4 py-2 border rounded-lg text-sm"
+                                className="px-3 py-2 border rounded-lg text-sm h-[40px]"
                                 value={newTask.startDate}
                                 onChange={e => setNewTask({ ...newTask, startDate: e.target.value })}
                             />
                         </div>
-                        <div className="flex flex-col gap-1">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase">Ngày kết thúc</label>
-                            <input
-                                type="date"
-                                className="px-4 py-2 border rounded-lg text-sm"
-                                value={newTask.endDate}
-                                onChange={e => setNewTask({ ...newTask, endDate: e.target.value })}
-                            />
-                        </div>
 
+                        {/* Số ngày hết hạn */}
                         <div className="flex flex-col gap-1">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase">Estimate (h)</label>
+                            <div className="flex justify-between items-center">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
+                                    <span className="material-icons text-[12px] text-orange-400">timer</span>
+                                    Số ngày hết hạn công việc *
+                                </label>
+                                {newTask.durationDays >= 1 && (
+                                    <span className="text-[9px] text-orange-400 font-bold uppercase tracking-tight">
+                                        → Hết hạn: {new Date(calcEndDate(newTask.startDate, newTask.durationDays)).toLocaleDateString('vi-VN')}
+                                    </span>
+                                )}
+                            </div>
                             <input
-                                type="text"
-                                className="px-4 py-2 border rounded-lg text-sm"
-                                value={newTask.estimateTime}
+                                type="number"
+                                min={1}
+                                max={365}
+                                required
+                                className="px-4 py-2 border rounded-lg text-sm font-bold text-orange-600 border-orange-200 focus:ring-2 focus:ring-orange-300 h-[40px]"
+                                placeholder="Nhập số ngày..."
+                                value={newTask.durationDays}
                                 onChange={e => {
-                                    const val = e.target.value.replace(/[^0-9]/g, '');
-                                    const num = Number(val);
-                                    if (val === '' || (num >= 1 && num <= 24)) {
-                                        setNewTask({ ...newTask, estimateTime: val === '' ? 0 : num });
-                                    }
-                                }}
-                            />
-                        </div>
-                        <div className="flex flex-col gap-1">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase">Tiến độ (%)</label>
-                            <input
-                                type="text"
-                                className="px-4 py-2 border rounded-lg text-sm font-bold text-blue-600"
-                                value={newTask.progress}
-                                onChange={e => {
-                                    const val = e.target.value.replace(/[^0-9]/g, '');
-                                    const num = Number(val);
-                                    if (val === '' || (num >= 1 && num <= 100)) {
-                                        setNewTask({ ...newTask, progress: val === '' ? 0 : num });
-                                    }
+                                    const val = parseInt(e.target.value) || 1;
+                                    setNewTask({ ...newTask, durationDays: Math.max(1, val) });
                                 }}
                             />
                         </div>
 
+                        {/* Chọn nhân viên - BẮT BUỘC */}
+                        <div className="md:col-span-4 mt-2">
+                            <label className="text-[11px] font-black tracking-widest text-slate-500 uppercase block mb-1">
+                                CHỌN NHÂN VIÊN THỰC HIỆN <span className="text-red-500">*</span>
+                            </label>
+                            <p className="text-xs text-slate-400 italic mb-2">* Bắt buộc phải chọn nhân viên tham gia nhiệm vụ này.</p>
+                            {showAssigneeError && (
+                                <div className="mb-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600 font-medium flex items-center gap-1">
+                                    <span className="material-icons text-[14px]">warning</span>
+                                    Chưa chọn nhân viên – Task sẽ không thể lưu!
+                                </div>
+                            )}
+                            <div className="max-h-52 overflow-y-auto border rounded-xl bg-slate-50 p-2 grid gap-2 custom-scrollbar md:grid-cols-2 lg:grid-cols-3">
+                                {users.map((u: any) => (
+                                    <div
+                                        key={u.id || u._id}
+                                        onClick={() => setNewTask({ ...newTask, assigneeName: u.name })}
+                                        className={`flex items-center gap-3 p-3 rounded-xl border bg-white cursor-pointer transition ${newTask.assigneeName === u.name ? 'border-blue-500 ring-1 ring-blue-500 shadow-md' : 'border-slate-200 hover:border-blue-300'}`}
+                                    >
+                                        <div className="w-5 flex items-center justify-center">
+                                            <input
+                                                type="radio"
+                                                className="w-4 h-4 cursor-pointer text-blue-600 focus:ring-blue-500"
+                                                checked={newTask.assigneeName === u.name}
+                                                readOnly
+                                            />
+                                        </div>
+                                        <img src={u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.name}`} alt={u.name} className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200" />
+                                        <div className="flex flex-col flex-1 truncate">
+                                            <span className="font-bold text-slate-800 text-sm truncate">{u.name}</span>
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase truncate">
+                                                {u.role === 'NHÂN VIÊN' ? 'EMPLOYEE' : u.role === 'QUẢN TRỊ VIÊN' ? 'ADMIN' : 'MANAGER'} • {u.department || 'CHƯA PHÂN BAN'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Công việc tiền đề */}
                         <div className="md:col-span-4 flex flex-col gap-1">
                             <label className="text-[10px] font-bold text-slate-400 uppercase">Công việc tiền đề (Predecessors)</label>
                             <div className="flex flex-wrap gap-2 p-2 border rounded-lg bg-slate-50 min-h-[40px]">
@@ -300,8 +473,12 @@ const Board = () => {
                         />
 
                         <div className="md:col-span-4 flex justify-end gap-2 text-sm mt-2">
-                            <button type="button" onClick={() => { setIsAddingTask(false); setEditingTask(null); }} className="px-4 py-2 text-slate-400 font-bold uppercase tracking-wider text-[10px]">Hủy</button>
-                            <button type="submit" className="px-8 py-2 bg-indigo-600 text-white rounded-lg font-black uppercase tracking-widest text-[10px] shadow-lg shadow-indigo-100 hover:scale-105 transition-transform">
+                            <button type="button" onClick={() => { setIsAddingTask(false); setEditingTask(null); setShowAssigneeError(false); }} className="px-4 py-2 text-slate-400 font-bold uppercase tracking-wider text-[10px]">Hủy</button>
+                            <button
+                                type="submit"
+                                disabled={!newTask.assigneeName || !newTask.featureId}
+                                className={`px-8 py-2 rounded-lg font-black uppercase tracking-widest text-[10px] shadow-lg transition-all ${newTask.assigneeName && newTask.featureId ? 'bg-indigo-600 text-white shadow-indigo-100 hover:scale-105' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
+                            >
                                 {editingTask ? 'Cập nhật' : 'Lưu Task'}
                             </button>
                         </div>
@@ -323,8 +500,19 @@ const Board = () => {
                         <div className="p-3 space-y-3 overflow-y-auto custom-scrollbar">
                             {tasks.filter(t => t.status === col.id).map(task => {
                                 const feature = activeFeatures.find(f => f._id === task.featureId);
+                                const { isWarning, isOverdue, diffDays } = getDeadlineWarning(task);
+                                const daysElapsed = calcDaysElapsed(task.startDate);
+                                const totalDays = task.durationDays || (task.startDate && task.endDate
+                                    ? Math.max(1, Math.ceil((new Date(task.endDate).getTime() - new Date(task.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1)
+                                    : 0);
+
+                                // Card border/shadow style theo deadline
+                                let cardClass = 'bg-white p-4 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition group';
+                                if (isOverdue) cardClass = 'bg-white p-4 rounded-xl shadow-md border-2 border-rose-400 hover:shadow-lg transition group ring-2 ring-rose-200';
+                                else if (isWarning) cardClass = 'bg-white p-4 rounded-xl shadow-sm border-2 border-orange-300 hover:shadow-md transition group';
+
                                 return (
-                                    <div key={task._id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition group">
+                                    <div key={task._id} className={cardClass}>
                                         <div className="flex flex-col gap-2">
                                             <div className="flex justify-between items-start">
                                                 <div className="flex items-center gap-1.5">
@@ -334,16 +522,37 @@ const Board = () => {
                                                     <span className="text-[10px] font-bold text-indigo-500 uppercase px-1.5 py-0.5 bg-indigo-50 rounded">
                                                         {feature?.moduleName || 'NONE'}
                                                     </span>
+                                                    {isOverdue && (
+                                                        <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-rose-100 text-rose-600 rounded text-[9px] font-black uppercase animate-pulse">
+                                                            <span className="material-icons text-[10px]">error</span>
+                                                            QUÁ HẠN
+                                                        </span>
+                                                    )}
+                                                    {isWarning && !isOverdue && (
+                                                        <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-orange-100 text-orange-600 rounded text-[9px] font-black uppercase">
+                                                            <span className="material-icons text-[10px]">warning</span>
+                                                            SẮP HẾT HẠN
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                                                    <button onClick={() => handleEditTask(task)} className="w-6 h-6 flex items-center justify-center bg-slate-100 rounded hover:bg-blue-600 hover:text-white transition" title="Sửa">
-                                                        <span className="material-icons text-[14px]">edit</span>
-                                                    </button>
-                                                    <button onClick={() => handleDeleteTask(task._id)} className="w-6 h-6 flex items-center justify-center bg-slate-100 rounded hover:bg-red-600 hover:text-white transition" title="Xóa">
-                                                        <span className="material-icons text-[14px]">delete</span>
-                                                    </button>
+                                                    {canManageBoard && (
+                                                        <>
+                                                            <button onClick={() => handleEditTask(task)} className="w-6 h-6 flex items-center justify-center bg-slate-100 rounded hover:bg-blue-600 hover:text-white transition" title="Sửa">
+                                                                <span className="material-icons text-[14px]">edit</span>
+                                                            </button>
+                                                            <button onClick={() => handleDeleteTask(task._id)} className="w-6 h-6 flex items-center justify-center bg-slate-100 rounded hover:bg-red-600 hover:text-white transition" title="Xóa">
+                                                                <span className="material-icons text-[14px]">delete</span>
+                                                            </button>
+                                                        </>
+                                                    )}
                                                     {columns.filter(c => c.id !== col.id).map(c => {
-                                                        const getIconForStatus = (statusId) => {
+                                                        const isEmployeeTransition = !canManageBoard && task.status === 'TODO' && c.id === 'IN_PROGRESS';
+                                                        const isAllowed = canManageBoard || isEmployeeTransition;
+
+                                                        if (!isAllowed) return null;
+
+                                                        const getIconForStatus = (statusId: string) => {
                                                             switch (statusId) {
                                                                 case 'TODO': return 'list_alt';
                                                                 case 'IN_PROGRESS': return 'play_arrow';
@@ -352,14 +561,15 @@ const Board = () => {
                                                                 default: return 'arrow_forward';
                                                             }
                                                         };
+
                                                         return (
                                                             <button
                                                                 key={c.id}
                                                                 onClick={() => handleUpdateTaskStatus(task._id, c.id)}
-                                                                className="w-6 h-6 flex items-center justify-center bg-slate-100 rounded hover:bg-indigo-600 hover:text-white transition"
-                                                                title={`Chuyển sang: ${c.title}`}
+                                                                className={`w-6 h-6 flex items-center justify-center bg-slate-100 rounded transition ${isEmployeeTransition ? 'hover:bg-emerald-500 hover:text-white text-emerald-600' : 'hover:bg-indigo-600 hover:text-white'}`}
+                                                                title={isEmployeeTransition ? 'Nhận việc & Tiến hành' : `Chuyển sang: ${c.title}`}
                                                             >
-                                                                <span className="material-icons text-[14px]">{getIconForStatus(c.id)}</span>
+                                                                <span className="material-icons text-[14px]">{isEmployeeTransition ? 'front_hand' : getIconForStatus(c.id)}</span>
                                                             </button>
                                                         )
                                                     })}
@@ -367,32 +577,39 @@ const Board = () => {
                                             </div>
                                             <h4 className="font-bold text-slate-800 text-sm leading-tight">{task.title}</h4>
 
-                                            <div className="space-y-1">
-                                                <div className="flex justify-between items-center text-[9px] font-bold text-slate-400 uppercase">
-                                                    <span>Tiến độ</span>
-                                                    <span>{task.progress || 0}%</span>
+                                            {/* Hiển thị tiến trình ngày */}
+                                            {totalDays > 0 && (
+                                                <div className="space-y-1">
+                                                    <div className="flex justify-between items-center text-[9px] font-bold uppercase">
+                                                        <span className={isOverdue ? 'text-rose-500' : isWarning ? 'text-orange-500' : 'text-slate-400'}>
+                                                            {isOverdue ? '⚠ Đã quá hạn' : isWarning ? `Còn ${diffDays} ngày` : 'Tiến trình'}
+                                                        </span>
+                                                        <span className={`font-black ${isOverdue ? 'text-rose-600' : isWarning ? 'text-orange-600' : 'text-slate-600'}`}>
+                                                            {Math.min(daysElapsed, totalDays)}/{totalDays} ngày
+                                                        </span>
+                                                    </div>
+                                                    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                                        <div
+                                                            className={`h-full transition-all duration-500 rounded-full ${isOverdue ? 'bg-rose-500' : isWarning ? 'bg-orange-400' : task.status === 'DONE' ? 'bg-emerald-500' : 'bg-blue-500'}`}
+                                                            style={{ width: `${Math.min(100, (daysElapsed / totalDays) * 100)}%` }}
+                                                        />
+                                                    </div>
                                                 </div>
-                                                <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
-                                                    <div
-                                                        className={`h-full transition-all duration-500 ${task.progress >= 100 ? 'bg-green-500' : 'bg-blue-600'}`}
-                                                        style={{ width: `${task.progress || 0}%` }}
-                                                    />
-                                                </div>
-                                            </div>
+                                            )}
 
-                                            <div className="flex justify-between items-center pt-3 border-t mt-1">
+                                            <div className="flex justify-between items-center pt-2 border-t mt-1">
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-[10px] font-black text-indigo-600 uppercase border border-indigo-200">
                                                         {task.assigneeName ? task.assigneeName.charAt(0) : '?'}
                                                     </div>
                                                     <span className="text-[10px] font-black text-slate-500 uppercase">{task.assigneeName || 'NONE'}</span>
                                                 </div>
-                                                <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
-                                                    <span className="flex items-center gap-1">
-                                                        <span className="material-icons text-[12px]">schedule</span>
-                                                        {task.logTime}/{task.estimateTime}h
-                                                    </span>
-                                                </div>
+                                                {task.endDate && (
+                                                    <div className={`flex items-center gap-1 text-[9px] font-bold ${isOverdue ? 'text-rose-500' : isWarning ? 'text-orange-500' : 'text-slate-400'}`}>
+                                                        <span className="material-icons text-[11px]">event</span>
+                                                        {new Date(task.endDate).toLocaleDateString('vi-VN')}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>

@@ -29,7 +29,7 @@ router.post('/bulk', authMiddleware, async (req, res) => {
             let finalDept = req.user.department || '';
 
             // If admin/manager is updating for someone else
-            if (targetUserId && targetUserId !== req.user.id && ['ADMIN', 'MANAGER'].includes(req.user.role)) {
+            if (targetUserId && targetUserId !== req.user.id && ['QUẢN TRỊ VIÊN', 'TRƯỞNG PHÒNG', 'TRƯỞNG NHÓM'].includes(req.user.role)) {
                 finalUserId = targetUserId;
                 const targetUser = await User.findById(targetUserId);
                 if (targetUser) {
@@ -82,7 +82,7 @@ router.get('/me', authMiddleware, async (req, res) => {
 // Admin/Manager: Get everyone's schedules
 router.get('/', authMiddleware, async (req, res) => {
     try {
-        if (!['ADMIN', 'MANAGER'].includes(req.user.role)) {
+        if (!['QUẢN TRỊ VIÊN', 'TRƯỞNG PHÒNG', 'TRƯỞNG NHÓM'].includes(req.user.role)) {
             return res.status(403).json({ message: 'Forbidden' });
         }
 
@@ -95,7 +95,7 @@ router.get('/', authMiddleware, async (req, res) => {
             if (to) filter.dateKey.$lte = String(to);
         }
 
-        if (req.user.role === 'MANAGER') {
+        if (req.user.role === 'TRƯỞNG PHÒNG' || req.user.role === 'TRƯỞNG NHÓM') {
             filter.department = req.user.department;
         } else if (department) {
             filter.department = String(department);
@@ -115,7 +115,7 @@ router.get('/', authMiddleware, async (req, res) => {
 // Admin/Manager: Summary report (Absence tracking)
 router.get('/report', authMiddleware, async (req, res) => {
     try {
-        if (!['ADMIN', 'MANAGER'].includes(req.user.role)) {
+        if (!['QUẢN TRỊ VIÊN', 'TRƯỞNG PHÒNG', 'TRƯỞNG NHÓM'].includes(req.user.role)) {
             return res.status(403).json({ message: 'Forbidden' });
         }
 
@@ -126,7 +126,7 @@ router.get('/report', authMiddleware, async (req, res) => {
             dateKey: { $gte: from, $lte: to }
         };
 
-        if (req.user.role === 'MANAGER') {
+        if (req.user.role === 'TRƯỞNG PHÒNG' || req.user.role === 'TRƯỞNG NHÓM') {
             match.department = req.user.department;
         } else if (req.query.department) {
             match.department = String(req.query.department);

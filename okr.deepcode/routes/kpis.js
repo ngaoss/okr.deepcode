@@ -22,7 +22,7 @@ router.get('/', authMiddleware, async (req, res) => {
         if (req.query.workgroupId) filter.workgroupId = req.query.workgroupId;
 
         // Non-admin users can only see their department's KPIs
-        if (req.user.role !== 'ADMIN') {
+        if (req.user.role !== 'QUẢN TRỊ VIÊN') {
             filter.department = req.user.department;
         }
 
@@ -52,7 +52,7 @@ router.get('/department/:dept', authMiddleware, async (req, res) => {
 router.get('/personal/:userId', authMiddleware, async (req, res) => {
     try {
         // Users can only see their own KPIs unless they're manager/admin
-        if (req.user.role === 'EMPLOYEE' && req.user.id !== req.params.userId) {
+        if (req.user.role === 'NHÂN VIÊN' && req.user.id !== req.params.userId) {
             return res.status(403).json({ message: 'Forbidden' });
         }
 
@@ -74,7 +74,7 @@ router.post('/', authMiddleware, async (req, res) => {
         const { type, assignedTo } = req.body;
 
         // Only managers and admins can create personal KPIs
-        if (type === 'PERSONAL' && req.user.role === 'EMPLOYEE') {
+        if (type === 'PERSONAL' && req.user.role === 'NHÂN VIÊN') {
             return res.status(403).json({ message: 'Only managers can assign personal KPIs' });
         }
 
@@ -153,7 +153,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
         if (!kpi) return res.status(404).json({ message: 'KPI không tìm thấy' });
 
         // Check permissions for personal KPI
-        if (kpi.type === 'PERSONAL' && req.user.role === 'EMPLOYEE') {
+        if (kpi.type === 'PERSONAL' && req.user.role === 'NHÂN VIÊN') {
             if (kpi.assignedBy !== req.user.id && kpi.assignedTo !== req.user.id) {
                 return res.status(403).json({ message: 'Forbidden' });
             }
@@ -267,7 +267,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
         if (!kpi) return res.status(404).json({ message: 'KPI không tìm thấy' });
 
         // Only creator or admin can delete
-        if (req.user.role === 'EMPLOYEE' && kpi.assignedBy !== req.user.id) {
+        if (req.user.role === 'NHÂN VIÊN' && kpi.assignedBy !== req.user.id) {
             return res.status(403).json({ message: 'Forbidden' });
         }
 

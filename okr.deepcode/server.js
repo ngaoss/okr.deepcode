@@ -73,8 +73,8 @@ async function ensureDefaultAdmin() {
     const existing = await User.findOne({ email })
 
     if (existing) {
-      if (existing.role !== 'ADMIN') {
-        existing.role = 'ADMIN'
+      if (existing.role !== 'QUẢN TRỊ VIÊN') {
+        existing.role = 'QUẢN TRỊ VIÊN'
         await existing.save()
       }
       console.log('✅ Default admin ready')
@@ -87,7 +87,7 @@ async function ensureDefaultAdmin() {
       name,
       email,
       password: hash,
-      role: 'ADMIN',
+      role: 'QUẢN TRỊ VIÊN',
       department: 'Ban Giám Đốc',
       avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`
     })

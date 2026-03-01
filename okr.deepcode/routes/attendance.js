@@ -114,9 +114,9 @@ router.get('/today', authMiddleware, async (req, res) => {
     const dateKey = req.query.dateKey ? String(req.query.dateKey) : getDateKey(new Date());
     const filter = { dateKey };
 
-    if (req.user.role === 'EMPLOYEE') {
+    if (req.user.role === 'NHÂN VIÊN') {
       filter.userId = req.user.id;
-    } else if (req.user.role === 'MANAGER') {
+    } else if (req.user.role === 'TRƯỞNG PHÒNG' || req.user.role === 'TRƯỞNG NHÓM') {
       filter.department = req.user.department;
     } else if (req.query.department) {
       filter.department = String(req.query.department);
@@ -131,7 +131,7 @@ router.get('/today', authMiddleware, async (req, res) => {
 
 router.get('/summary', authMiddleware, async (req, res) => {
   try {
-    if (!['ADMIN', 'MANAGER'].includes(req.user.role)) {
+    if (!['QUẢN TRỊ VIÊN', 'TRƯỞNG PHÒNG', 'TRƯỞNG NHÓM'].includes(req.user.role)) {
       return res.status(403).json({ message: 'Forbidden' });
     }
 
@@ -142,7 +142,7 @@ router.get('/summary', authMiddleware, async (req, res) => {
       dateKey: { $gte: from, $lte: to }
     };
 
-    if (req.user.role === 'MANAGER') {
+    if (req.user.role === 'TRƯỞNG PHÒNG' || req.user.role === 'TRƯỞNG NHÓM') {
       match.department = req.user.department;
     } else if (req.query.department) {
       match.department = String(req.query.department);
@@ -207,7 +207,7 @@ router.get('/status', authMiddleware, async (req, res) => {
 // Admin/Manager update record
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
-    if (!['ADMIN', 'MANAGER'].includes(req.user.role)) {
+    if (!['QUẢN TRỊ VIÊN', 'TRƯỞNG PHÒNG', 'TRƯỞNG NHÓM'].includes(req.user.role)) {
       return res.status(403).json({ message: 'Forbidden' });
     }
 

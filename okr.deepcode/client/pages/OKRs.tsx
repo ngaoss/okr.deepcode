@@ -388,7 +388,7 @@ export const OKRs: React.FC = () => {
 
   const displayOkrs = okrs.filter(o =>
     o.quarter === selectedPeriod.quarter && o.year === selectedPeriod.year &&
-    (user?.role === 'ADMIN' || o.department === user?.department || o.ownerId === user?.id) &&
+    (user?.role === 'QUẢN TRỊ VIÊN' || o.department === user?.department || o.ownerId === user?.id) &&
     (
       filterType === 'ALL' ||
       (filterType === 'PERSONAL' && o.type === 'PERSONAL') ||
@@ -512,7 +512,7 @@ export const OKRs: React.FC = () => {
                     <p className="text-[10px] text-slate-400 font-bold uppercase truncate">{okr.status}</p>
                   </div>
                   <div className="opacity-0 group-hover:opacity-100 flex items-center space-y-1 flex-col">
-                    {user?.role === 'ADMIN' && okr.status === 'PENDING_APPROVAL' && (
+                    {(user?.role === 'QUẢN TRỊ VIÊN' || user?.role === 'TRƯỞNG PHÒNG' || user?.role === 'TRƯỞNG NHÓM') && okr.status === 'PENDING_APPROVAL' && (
                       <div className="flex space-x-1 mb-1">
                         <button onClick={() => approveOKR(okr.id)} className="p-1 px-2 bg-emerald-500 text-white rounded text-[10px] font-bold hover:bg-emerald-600 transition-colors">DUYỆT</button>
                         <button onClick={() => rejectOKR(okr.id)} className="p-1 px-2 bg-rose-500 text-white rounded text-[10px] font-bold hover:bg-rose-600 transition-colors">TỪ CHỐI</button>

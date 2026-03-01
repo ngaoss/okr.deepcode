@@ -126,7 +126,7 @@ export const Teams: React.FC = () => {
           <h2 className="text-2xl font-bold text-slate-800">Cơ cấu Phòng ban</h2>
           <p className="text-slate-500 text-sm">Quản lý các đơn vị và hiệu suất làm việc của từng team.</p>
         </div>
-        {currentUser?.role === 'ADMIN' ? (
+        {currentUser?.role === 'QUẢN TRỊ VIÊN' ? (
           <button onClick={() => { setEditingDeptId(null); setForm({ name: '', head: '', description: '' }); setShowModal(true); }} className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-lg font-medium hover:bg-slate-50 transition-all flex items-center space-x-2">
             <span className="material-icons text-lg">add</span>
             <span>Thêm phòng ban</span>
@@ -141,7 +141,7 @@ export const Teams: React.FC = () => {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-        {currentUser?.role === 'ADMIN' && (
+        {currentUser?.role === 'QUẢN TRỊ VIÊN' && (
           <div onClick={() => { setEditingDeptId(null); setForm({ name: '', head: '', description: '' }); setShowModal(true); }} className="cursor-pointer bg-white rounded-2xl border-dashed border-2 border-slate-200 hover:border-indigo-300 flex items-center justify-center p-8">
             <div className="text-center">
               <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center mx-auto mb-2">
@@ -198,24 +198,24 @@ export const Teams: React.FC = () => {
                   <span className={`text-sm font-bold ${dept.color}`}>{dept.progress}%</span>
                 </div>
                 <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full ${dept.color.replace('text', 'bg')}`} 
+                  <div
+                    className={`h-full ${dept.color.replace('text', 'bg')}`}
                     style={{ width: `${dept.progress}%` }}
                   ></div>
                 </div>
               </div>
             </div>
-            
+
             <div className="bg-slate-50 px-6 py-4 flex justify-between items-center border-t border-slate-100">
               <div className="flex -space-x-2">
-                {[1,2,3,4].map(n => (
+                {[1, 2, 3, 4].map(n => (
                   <img key={n} src={`https://picsum.photos/seed/user${n}${dept.name}/100/100`} className="w-8 h-8 rounded-full border-2 border-white" alt="avatar" />
                 ))}
                 <div className="w-8 h-8 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-500">
                   +{dept.members - 4}
                 </div>
               </div>
-              {currentUser?.role === 'ADMIN' ? (
+              {currentUser?.role === 'QUẢN TRỊ VIÊN' ? (
                 <div className="flex items-center space-x-2">
                   <button onClick={() => handleEdit(dept)} className="text-blue-600 text-sm font-bold hover:underline">Sửa</button>
                   <button onClick={() => handleDelete(dept.id)} disabled={deletingId === dept.id} className="text-rose-600 text-sm font-bold hover:underline">{deletingId === dept.id ? 'Đang xóa…' : 'Xóa'}</button>
@@ -235,34 +235,34 @@ export const Teams: React.FC = () => {
 
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Tên phòng ban</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 required
                 placeholder="Kỹ thuật"
                 className="w-full p-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
                 value={form.name}
-                onChange={e => setForm({...form, name: e.target.value})}
+                onChange={e => setForm({ ...form, name: e.target.value })}
               />
             </div>
 
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Trưởng phòng (tùy chọn)</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 placeholder="Nguyễn Văn A"
                 className="w-full p-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
                 value={form.head}
-                onChange={e => setForm({...form, head: e.target.value})}
+                onChange={e => setForm({ ...form, head: e.target.value })}
               />
             </div>
 
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Mô tả</label>
-              <textarea 
+              <textarea
                 rows={3}
                 className="w-full p-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
                 value={form.description}
-                onChange={e => setForm({...form, description: e.target.value})}
+                onChange={e => setForm({ ...form, description: e.target.value })}
               />
             </div>
 

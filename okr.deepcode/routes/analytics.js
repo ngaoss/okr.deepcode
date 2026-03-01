@@ -37,9 +37,9 @@ router.get('/health-score', authMiddleware, async (req, res) => {
         let query = {};
 
         // BE-05: Filter by role
-        if (role === 'EMPLOYEE') {
+        if (role === 'NHÂN VIÊN') {
             query.ownerId = userId;
-        } else if (role === 'MANAGER') {
+        } else if (role === 'TRƯỞNG PHÒNG' || role === 'TRƯỞNG NHÓM') {
             query.department = department; // Manager sees department data
         }
         // CEO/ADMIN sees all (empty query)
@@ -106,8 +106,8 @@ router.get('/at-risk', authMiddleware, async (req, res) => {
     try {
         const { role, id: userId, department } = req.user;
         let query = {};
-        if (role === 'EMPLOYEE') query.ownerId = userId;
-        else if (role === 'MANAGER') query.department = department;
+        if (role === 'NHÂN VIÊN') query.ownerId = userId;
+        else if (role === 'TRƯỞNG PHÒNG' || role === 'TRƯỞNG NHÓM') query.department = department;
 
         const okrs = await Objective.find(query);
         const atRiskList = [];
@@ -195,7 +195,7 @@ router.get('/alignment', authMiddleware, async (req, res) => {
     try {
         const { role, department } = req.user;
         let query = {};
-        if (role === 'MANAGER') query.department = department;
+        if (role === 'TRƯỞNG PHÒNG' || role === 'TRƯỞNG NHÓM') query.department = department;
 
         const totalOkrs = await Objective.countDocuments(query);
         const alignedOkrs = await Objective.countDocuments({ ...query, parentId: { $ne: null } });
@@ -279,7 +279,7 @@ router.get('/department-stats', authMiddleware, async (req, res) => {
 // BE-07: Clear Cache (Admin only)
 router.post('/cache/clear', authMiddleware, async (req, res) => {
     try {
-        if (req.user.role !== 'ADMIN') {
+        if (req.user.role !== 'QUẢN TRỊ VIÊN') {
             return res.status(403).json({ message: 'Admin only' });
         }
 
@@ -310,7 +310,7 @@ router.post('/cache/clear', authMiddleware, async (req, res) => {
 // BE-08: Cache Stats (Admin only)
 router.get('/cache/stats', authMiddleware, async (req, res) => {
     try {
-        if (req.user.role !== 'ADMIN') {
+        if (req.user.role !== 'QUẢN TRỊ VIÊN') {
             return res.status(403).json({ message: 'Admin only' });
         }
 

@@ -80,15 +80,15 @@ export const DepartmentKPIs: React.FC = () => {
     };
 
     const loadKPIs = async () => {
-        const deptToFetch = user?.role === 'ADMIN' ? selectedDept : user?.department;
-        if (user?.role !== 'ADMIN' && !deptToFetch) return;
+        const deptToFetch = user?.role === 'QUẢN TRỊ VIÊN' ? selectedDept : user?.department;
+        if (user?.role !== 'QUẢN TRỊ VIÊN' && !deptToFetch) return;
 
         try {
             const params: any = {
                 quarter: selectedPeriod.quarter,
                 year: selectedPeriod.year
             };
-            if (user?.role !== 'ADMIN') {
+            if (user?.role !== 'QUẢN TRỊ VIÊN') {
                 params.department = user?.department;
             } else if (selectedDept) {
                 params.department = selectedDept;
@@ -353,10 +353,10 @@ export const DepartmentKPIs: React.FC = () => {
                     <div>
                         <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Quản lý KPI</h2>
                         <p className="text-slate-500 text-xs font-medium">
-                            {user?.role === 'ADMIN' ? 'Hệ thống quản trị mục tiêu tập trung' : `Mục tiêu hiệu suất của ${user?.department}`}
+                            {user?.role === 'QUẢN TRỊ VIÊN' ? 'Hệ thống quản trị mục tiêu tập trung' : `Mục tiêu hiệu suất của ${user?.department}`}
                         </p>
                     </div>
-                    {user?.role === 'ADMIN' && (
+                    {user?.role === 'QUẢN TRỊ VIÊN' && (
                         <div className="relative">
                             <select
                                 className="pl-3 pr-8 py-2 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-bold text-slate-700 appearance-none cursor-pointer shadow-sm hover:border-indigo-300 transition-colors"
@@ -419,7 +419,7 @@ export const DepartmentKPIs: React.FC = () => {
                         <option value="LOW">Ưu tiên: Thấp</option>
                     </select>
 
-                    {(user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
+                    {(user?.role === 'QUẢN TRỊ VIÊN' || user?.role === 'TRƯỞNG PHÒNG' || user?.role === 'TRƯỞNG NHÓM') && (
                         <button
                             onClick={() => { closeModal(); setShowModal(true); setForm(f => ({ ...f, type: 'DEPARTMENT', department: selectedDept || user?.department || '' })); }}
                             className="bg-indigo-600 text-white px-5 py-2 rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center space-x-2 shadow-lg shadow-indigo-100 active:scale-95"
@@ -553,7 +553,7 @@ export const DepartmentKPIs: React.FC = () => {
                                                 Xong
                                             </button>
                                         </div>
-                                        {(user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
+                                        {(user?.role === 'QUẢN TRỊ VIÊN' || user?.role === 'TRƯỞNG PHÒNG' || user?.role === 'TRƯỞNG NHÓM') && (
                                             <button
                                                 onClick={() => handleDelete(kpi.id)}
                                                 disabled={deletingId === kpi.id}
@@ -639,7 +639,7 @@ export const DepartmentKPIs: React.FC = () => {
                             </div>
                         )}
 
-                        {form.type === 'DEPARTMENT' && user?.role === 'ADMIN' && (
+                        {form.type === 'DEPARTMENT' && user?.role === 'QUẢN TRỊ VIÊN' && (
                             <div>
                                 <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Phòng ban phụ trách</label>
                                 <select

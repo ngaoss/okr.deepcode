@@ -1,7 +1,9 @@
 import { apiRequest } from './apiClient';
 
 export const projectService = {
-    getProjects: () => apiRequest('/projects'),
+    getProjects: (kanban?: boolean) => apiRequest(kanban ? '/projects?kanban=true' : '/projects'),
+    getManagers: () => apiRequest('/projects/managers'),
+    getLeaders: () => apiRequest('/projects/leaders'),
     createProject: (data: any) => apiRequest('/projects', { method: 'POST', body: JSON.stringify(data) }),
     updateProject: (id: string, data: any) => apiRequest(`/projects/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteProject: (id: string) => apiRequest(`/projects/${id}`, { method: 'DELETE' }),

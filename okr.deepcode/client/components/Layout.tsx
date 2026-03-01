@@ -116,8 +116,12 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             <NavLink to="/backlog" icon="inventory_2">Backlog (Yêu cầu)</NavLink>
             <NavLink to="/sprints" icon="bolt">Sprints (Chu kỳ)</NavLink>
             <NavLink to="/board" icon="view_kanban">Board Kanban</NavLink>
-            <NavLink to="/table" icon="table_chart">Bảng chi tiết</NavLink>
-            <NavLink to="/project-notes" icon="note_alt">Ghi chú & Note</NavLink>
+            {user?.role !== 'NHÂN VIÊN' && (
+              <>
+                <NavLink to="/table" icon="table_chart">Bảng chi tiết</NavLink>
+                <NavLink to="/project-notes" icon="note_alt">Ghi chú & Note</NavLink>
+              </>
+            )}
             <NavLink to="/gantt" icon="timeline">Biểu đồ Gantt</NavLink>
           </NavGroup>
 
@@ -129,7 +133,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           </NavGroup>
 
           <NavGroup title="Tổ chức" icon="account_tree">
-            {user?.role !== 'EMPLOYEE' && <NavLink to="/users" icon="group">Thành viên</NavLink>}
+            {user?.role !== 'NHÂN VIÊN' && <NavLink to="/users" icon="group">Thành viên</NavLink>}
             <NavLink to="/teams" icon="corporate_fare">Phòng ban</NavLink>
             <NavLink to="/workgroups" icon="groups">Nhóm làm việc</NavLink>
             <NavLink to="/kpis/department" icon="bar_chart">KPI Phòng ban</NavLink>

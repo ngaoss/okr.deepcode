@@ -17,7 +17,7 @@ const router = express.Router();
 // Cleanup / Reset Data (Delete all operational data)
 router.post('/cleanup', authMiddleware, async (req, res) => {
     try {
-        if (req.user.role !== 'ADMIN') {
+        if (req.user.role !== 'QUẢN TRỊ VIÊN') {
             return res.status(403).json({ message: 'Admin only' });
         }
 
@@ -57,7 +57,7 @@ router.get('/templates', authMiddleware, async (req, res) => {
 // Create template (Admin only)
 router.post('/templates', authMiddleware, async (req, res) => {
     try {
-        if (req.user.role !== 'ADMIN') {
+        if (req.user.role !== 'QUẢN TRỊ VIÊN') {
             return res.status(403).json({ message: 'Admin only' });
         }
 

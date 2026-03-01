@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { featureService, noteAgileService, projectService } from '../services/projectService';
 
-const EMPTY_NOTE = { title: '', type: 'BUSINESS', content: '', targetType: 'PROJECT', targetId: '' };
+const EMPTY_NOTE = { title: '', type: '', content: '', targetType: 'PROJECT', targetId: '' };
 
 const Notes = () => {
     const [projects, setProjects] = useState([]);
@@ -82,6 +82,10 @@ const Notes = () => {
                     content: newNote.content
                 });
             } else {
+                if (!newNote.type) {
+                    alert('Vui lòng chọn loại ghi chú!');
+                    return;
+                }
                 const isFeatureNote = newNote.targetType === 'FEATURE' && newNote.targetId !== '';
                 await noteAgileService.createNote({
                     ...newNote,
@@ -120,7 +124,7 @@ const Notes = () => {
             alert(err.message);
         }
     };
-    
+
     return (
         <div className="p-6 max-w-7xl mx-auto space-y-6">
             <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border">
@@ -129,13 +133,21 @@ const Notes = () => {
                     <p className="text-slate-500">Feature Note / Tech Note / Meeting Note</p>
                 </div>
                 <div className="flex gap-3">
-                    <select
-                        className="px-4 py-2 bg-slate-100 border-none rounded-lg font-medium cursor-pointer"
-                        value={selectedProject?._id || ''}
-                        onChange={(e) => setSelectedProject(projects.find(p => p._id === e.target.value))}
-                    >
-                        {projects.map(p => <option key={p._id} value={p._id}>{p.title}</option>)}
-                    </select>
+                    {projects.length > 1 ? (
+                        <select
+                            className="px-4 py-2 bg-slate-100 border-none rounded-lg font-medium cursor-pointer shadow-sm"
+                            value={selectedProject?._id || ''}
+                            onChange={(e) => setSelectedProject(projects.find(p => p._id === e.target.value))}
+                        >
+                            {projects.map(p => <option key={p._id} value={p._id}>{p.title}</option>)}
+                        </select>
+                    ) : (
+                        projects.length === 1 && (
+                            <div className="px-4 py-2 bg-slate-100 rounded-lg font-bold text-indigo-700 border border-slate-200">
+                                {projects[0].title}
+                            </div>
+                        )
+                    )}
                     <button
                         onClick={() => {
                             resetNoteForm();
@@ -148,40 +160,66 @@ const Notes = () => {
                 </div>
             </div>
 
+            {selectedProject && selectedProject.description && (
+                <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 animate-in fade-in slide-in-from-top-2 shrink-0">
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="material-icons text-indigo-500 text-sm">info</span>
+                        <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Mô tả dự án</p>
+                    </div>
+                    <p className="text-sm text-slate-600 italic ml-6">{selectedProject.description}</p>
+                </div>
+            )}
+
             {isAdding && (
                 <div className="bg-white p-6 rounded-xl shadow-lg border-2 border-indigo-100 animate-in fade-in zoom-in duration-200">
                     <form onSubmit={handleSaveNote} className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <input
-                                required
-                                className="px-4 py-2 border rounded-lg focus:ring-2 ring-indigo-500 md:col-span-1"
-                                placeholder="Tiêu đề ghi chú..."
-                                value={newNote.title}
-                                onChange={e => setNewNote({ ...newNote, title: e.target.value })}
-                            />
-                            <select
-                                className="px-4 py-2 border rounded-lg"
-                                value={newNote.type}
-                                onChange={e => setNewNote({ ...newNote, type: e.target.value })}
-                                disabled={Boolean(editingNote)}
-                            >
-                                {noteTypes.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-                            </select>
-                            <select
-                                className="px-4 py-2 border rounded-lg text-sm text-slate-700 bg-slate-50"
-                                value={newNote.targetType === 'FEATURE' ? newNote.targetId : ''}
-                                onChange={e => {
-                                    if (e.target.value) {
-                                        setNewNote({ ...newNote, targetType: 'FEATURE', targetId: e.target.value });
-                                    } else {
-                                        setNewNote({ ...newNote, targetType: 'PROJECT', targetId: '' });
-                                    }
-                                }}
-                                disabled={Boolean(editingNote)}
-                            >
-                                <option value="">Chọn Backlog đính kèm (bỏ trống = ghi chú chung)</option>
-                                {features.map(f => <option key={f._id} value={f._id}>{f.title}</option>)}
-                            </select>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                            {/* Tiêu đề */}
+                            <div className="flex flex-col gap-1">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Tiêu đề ghi chú <span className="text-red-400">*</span></label>
+                                <input
+                                    required
+                                    className="px-4 py-2 border rounded-lg focus:ring-2 ring-indigo-500 h-[40px] text-sm"
+                                    placeholder="Nhập tiêu đề..."
+                                    value={newNote.title}
+                                    onChange={e => setNewNote({ ...newNote, title: e.target.value })}
+                                />
+                            </div>
+                            {/* Loại ghi chú */}
+                            <div className="flex flex-col gap-1">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Loại ghi chú <span className="text-red-400">*</span></label>
+                                <select
+                                    required
+                                    className="px-4 py-2 border rounded-lg h-[40px] text-sm"
+                                    value={newNote.type}
+                                    onChange={e => setNewNote({ ...newNote, type: e.target.value })}
+                                    disabled={Boolean(editingNote)}
+                                    style={{ color: !newNote.type ? '#9ca3af' : '' }}
+                                >
+                                    <option value="" disabled style={{ color: '#9ca3af', fontStyle: 'italic' }}>— Loại ghi chú —</option>
+                                    {noteTypes.map(t => <option key={t.id} value={t.id} style={{ color: '#1e293b' }}>{t.label}</option>)}
+                                </select>
+                            </div>
+                            {/* Backlog đính kèm */}
+                            <div className="flex flex-col gap-1">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tight text-right w-full">Backlog đính kèm <span className="text-slate-300 font-normal normal-case">(trống = ghi chú chung)</span></label>
+                                <select
+                                    className="px-4 py-2 border rounded-lg h-[40px] text-sm bg-slate-50"
+                                    value={newNote.targetType === 'FEATURE' ? newNote.targetId : ''}
+                                    onChange={e => {
+                                        if (e.target.value) {
+                                            setNewNote({ ...newNote, targetType: 'FEATURE', targetId: e.target.value });
+                                        } else {
+                                            setNewNote({ ...newNote, targetType: 'PROJECT', targetId: '' });
+                                        }
+                                    }}
+                                    disabled={Boolean(editingNote)}
+                                    style={{ color: (newNote.targetType === 'PROJECT' || !newNote.targetId) ? '#9ca3af' : '' }}
+                                >
+                                    <option value="" style={{ color: '#9ca3af', fontStyle: 'italic' }}>— Ghi chú chung —</option>
+                                    {features.map(f => <option key={f._id} value={f._id} style={{ color: '#1e293b' }}>{f.title}</option>)}
+                                </select>
+                            </div>
                         </div>
                         <textarea
                             required

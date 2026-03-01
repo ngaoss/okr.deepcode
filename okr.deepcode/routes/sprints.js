@@ -19,14 +19,37 @@ router.get('/project/:projectId', authMiddleware, async (req, res) => {
 router.post('/', authMiddleware, async (req, res) => {
     try {
         const { projectId, name, startDate, endDate, goal } = req.body;
+
+        let approvalStatus = 'APPROVED';
+        if (req.user.role === 'TRƯỞNG PHÒNG' || req.user.role === 'MANAGER') {
+            approvalStatus = 'PENDING';
+        }
+
         const sprint = await Sprint.create({
             projectId,
             name,
             startDate,
             endDate,
             goal,
-            status: 'PLANNING'
+            status: 'PLANNING',
+            creatorName: req.user.name,
+            creatorRole: req.user.role,
+            approvalStatus
         });
+        res.json(sprint);
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
+});
+
+// Duyệt Sprint (Chỉ Admin)
+router.patch('/:id/approve', authMiddleware, async (req, res) => {
+    try {
+        if (req.user.role !== 'QUẢN TRỊ VIÊN' && req.user.role !== 'ADMIN') {
+            return res.status(403).json({ message: 'Only admin can approve sprints' });
+        }
+        const { approvalStatus } = req.body; // 'APPROVED' or 'REJECTED'
+        const sprint = await Sprint.findByIdAndUpdate(req.params.id, { approvalStatus }, { new: true });
         res.json(sprint);
     } catch (err) {
         res.status(400).json({ message: err.message });

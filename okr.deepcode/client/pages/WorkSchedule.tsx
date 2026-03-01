@@ -11,7 +11,7 @@ export const WorkSchedulePage: React.FC = () => {
     const [allSchedules, setAllSchedules] = useState<WorkScheduleRecord[]>([]);
     const [report, setReport] = useState<ScheduleSummary[]>([]);
     const [loading, setLoading] = useState(true);
-    const [view, setView] = useState<'employee' | 'admin'>(user?.role === 'EMPLOYEE' ? 'employee' : 'admin');
+    const [view, setView] = useState<'employee' | 'admin'>(user?.role === 'NHÂN VIÊN' ? 'employee' : 'admin');
     const [departments, setDepartments] = useState<any[]>([]);
     const [selectedDept, setSelectedDept] = useState('');
     const [monthOffset, setMonthOffset] = useState(0);
@@ -48,7 +48,7 @@ export const WorkSchedulePage: React.FC = () => {
             const from = formatDateKey(startOfMonth);
             const to = formatDateKey(endOfMonth);
 
-            if (user?.role === 'EMPLOYEE') {
+            if (user?.role === 'NHÂN VIÊN') {
                 const mine = await scheduleService.getMine(from, to);
                 setMySchedules(mine);
             } else {
@@ -463,7 +463,7 @@ export const WorkSchedulePage: React.FC = () => {
                                 Đăng ký và theo dõi lịch trình làm việc cá nhân & tổ chức.
                             </p>
                         </div>
-                        {user?.role !== 'EMPLOYEE' && (
+                        {user?.role !== 'NHÂN VIÊN' && (
                             <div className="flex bg-slate-100 p-2 rounded-[2rem] shadow-inner border border-slate-200">
                                 <button
                                     onClick={() => setView('employee')}
@@ -543,7 +543,7 @@ export const WorkSchedulePage: React.FC = () => {
                             />
                         </div>
                         <div className="p-12 pt-4 space-y-4 max-h-[50vh] overflow-y-auto custom-scrollbar">
-                            {shifts.filter(s => s.value !== 'UNEXCUSED_ABSENCE' || user?.role !== 'EMPLOYEE').map(s => {
+                            {shifts.filter(s => s.value !== 'UNEXCUSED_ABSENCE' || user?.role !== 'NHÂN VIÊN').map(s => {
                                 const currentSch = (selectedDay.userId && selectedDay.userId !== user?.id)
                                     ? adminUserSchedules.find(sch => sch.dateKey === selectedDay.dateKey)
                                     : mySchedules.find(sch => sch.dateKey === selectedDay.dateKey);

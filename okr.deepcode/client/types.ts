@@ -1,8 +1,9 @@
 
-export type UserRole = 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
+export type UserRole = 'QUẢN TRỊ VIÊN' | 'TRƯỞNG PHÒNG' | 'NHÂN VIÊN' | 'TRƯỞNG NHÓM';
 
 export interface User {
   id: string;
+  _id?: string;
   name: string;
   email: string;
   password?: string;
@@ -43,6 +44,7 @@ export type ObjectiveStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJEC
 
 export interface Objective {
   id: string;
+  _id?: string;
   title: string;
   description: string;
   type?: 'COMPANY' | 'DEPARTMENT' | 'TEAM' | 'PERSONAL';

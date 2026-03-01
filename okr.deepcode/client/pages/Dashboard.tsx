@@ -61,7 +61,7 @@ export const Dashboard: React.FC = () => {
   });
 
   const [loading, setLoading] = useState(true);
-  const [viewRole, setViewRole] = useState<'ADMIN' | 'MANAGER' | 'EMPLOYEE'>(user?.role || 'EMPLOYEE');
+  const [viewRole, setViewRole] = useState<'QUẢN TRỊ VIÊN' | 'TRƯỞNG PHÒNG' | 'TRƯỞNG NHÓM' | 'NHÂN VIÊN'>(user?.role || 'NHÂN VIÊN');
 
   useEffect(() => {
     if (user) {
@@ -134,12 +134,12 @@ export const Dashboard: React.FC = () => {
   // Define Layout Order
 
   // 1. VIEW CEO / ADMIN
-  if (viewRole === 'ADMIN') {
+  if (viewRole === 'QUẢN TRỊ VIÊN') {
     return (
       <div className="p-6 space-y-8 animate-fadeIn">
         <div className="flex justify-end space-x-2 mb-4">
           <span className="text-xs font-bold text-slate-400 self-center mr-2">Preview as:</span>
-          {(['ADMIN', 'MANAGER', 'EMPLOYEE'] as const).map(role => (
+          {(['QUẢN TRỊ VIÊN', 'TRƯỞNG PHÒNG', 'TRƯỞNG NHÓM', 'NHÂN VIÊN'] as const).map(role => (
             <button key={role}
               onClick={() => setViewRole(role)}
               className={`px-3 py-1 rounded-lg text-xs font-black border transition-all 
@@ -155,9 +155,6 @@ export const Dashboard: React.FC = () => {
             <HealthScoreCard
               score={analyticsData.healthScore}
               components={analyticsData.components}
-              healthStatus={analyticsData.healthStatus}
-              // Insight removed from here, moved to bottom card
-              definitions={analyticsData.definitions}
             />
           </div>
           <div className="lg:col-span-2 h-[340px]">
@@ -208,14 +205,14 @@ export const Dashboard: React.FC = () => {
     );
   }
 
-  // 2. VIEW MANAGER
-  if (viewRole === 'MANAGER') {
+  // 2. VIEW MANAGER / TEAM LEADER
+  if (viewRole === 'TRƯỞNG PHÒNG' || viewRole === 'TRƯỞNG NHÓM') {
     return (
       <div className="p-6 space-y-8 animate-fadeIn">
-        {user?.role === 'ADMIN' && (
-          <button onClick={() => setViewRole('ADMIN')} className="mb-4 px-3 py-1 bg-slate-200 text-slate-600 rounded text-xs font-bold">← Back to Admin View</button>
+        {user?.role === 'QUẢN TRỊ VIÊN' && (
+          <button onClick={() => setViewRole('QUẢN TRỊ VIÊN')} className="mb-4 px-3 py-1 bg-slate-200 text-slate-600 rounded text-xs font-bold">← Back to Admin View</button>
         )}
-        <h2 className="text-2xl font-black text-slate-800 mb-2">Dashboard Trưởng Phòng</h2>
+        <h2 className="text-2xl font-black text-slate-800 mb-2">Dashboard {viewRole === 'TRƯỞNG PHÒNG' ? 'Trưởng Phòng' : 'Trưởng Nhóm'}</h2>
 
         {/* BLOCK 1: TEAM PERFORMANCE */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -251,8 +248,8 @@ export const Dashboard: React.FC = () => {
   // 3. VIEW EMPLOYEE
   return (
     <div className="p-6 space-y-6 animate-fadeIn">
-      {user?.role === 'ADMIN' && (
-        <button onClick={() => setViewRole('ADMIN')} className="mb-4 px-3 py-1 bg-slate-200 text-slate-600 rounded text-xs font-bold">← Back to Admin View</button>
+      {user?.role === 'QUẢN TRỊ VIÊN' && (
+        <button onClick={() => setViewRole('QUẢN TRỊ VIÊN')} className="mb-4 px-3 py-1 bg-slate-200 text-slate-600 rounded text-xs font-bold">← Back to Admin View</button>
       )}
       <h2 className="text-2xl font-black text-slate-800 mb-2">Xin chào, {user?.name} 👋</h2>
 

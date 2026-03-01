@@ -109,13 +109,21 @@ const TableView = () => {
                     <p className="text-slate-500">Quản lý nâng cao dạng bảng (Excel-style)</p>
                 </div>
                 <div className="flex gap-3">
-                    <select
-                        className="px-4 py-2 bg-slate-100 border-none rounded-lg font-medium cursor-pointer"
-                        value={selectedProject?._id || ''}
-                        onChange={(e) => setSelectedProject(projects.find(p => p._id === e.target.value))}
-                    >
-                        {projects.map(p => <option key={p._id} value={p._id}>{p.title}</option>)}
-                    </select>
+                    {projects.length > 1 ? (
+                        <select
+                            className="px-4 py-2 bg-slate-100 border-none rounded-lg font-medium cursor-pointer shadow-sm"
+                            value={selectedProject?._id || ''}
+                            onChange={(e) => setSelectedProject(projects.find(p => p._id === e.target.value))}
+                        >
+                            {projects.map(p => <option key={p._id} value={p._id}>{p.title}</option>)}
+                        </select>
+                    ) : (
+                        projects.length === 1 && (
+                            <div className="px-4 py-2 bg-slate-100 rounded-lg font-bold text-indigo-700 border border-slate-200">
+                                {projects[0].title}
+                            </div>
+                        )
+                    )}
                     <button
                         onClick={exportToCSV}
                         className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition flex items-center gap-2"
@@ -126,6 +134,16 @@ const TableView = () => {
                 </div>
             </div>
 
+            {selectedProject && selectedProject.description && (
+                <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 animate-in fade-in slide-in-from-top-2 shrink-0">
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="material-icons text-indigo-500 text-sm">info</span>
+                        <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Mô tả dự án</p>
+                    </div>
+                    <p className="text-sm text-slate-600 italic ml-6">{selectedProject.description}</p>
+                </div>
+            )}
+
             {/* Filters */}
             <div className="bg-white p-4 rounded-xl shadow-sm border grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
@@ -134,12 +152,13 @@ const TableView = () => {
                         className="w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm"
                         value={filter.status}
                         onChange={e => setFilter({ ...filter, status: e.target.value })}
+                        style={{ color: !filter.status ? '#9ca3af' : '' }}
                     >
-                        <option value="">Tất cả</option>
-                        <option value="TODO">To Do</option>
-                        <option value="IN_PROGRESS">In Progress</option>
-                        <option value="REVIEW">Review</option>
-                        <option value="DONE">Done</option>
+                        <option value="" style={{ color: '#9ca3af', fontStyle: 'italic' }}>— Tất cả trạng thái —</option>
+                        <option value="TODO" style={{ color: '#1e293b' }}>To Do</option>
+                        <option value="IN_PROGRESS" style={{ color: '#1e293b' }}>In Progress</option>
+                        <option value="REVIEW" style={{ color: '#1e293b' }}>Review</option>
+                        <option value="DONE" style={{ color: '#1e293b' }}>Done</option>
                     </select>
                 </div>
                 <div>
@@ -148,9 +167,10 @@ const TableView = () => {
                         className="w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm"
                         value={filter.sprintId}
                         onChange={e => setFilter({ ...filter, sprintId: e.target.value })}
+                        style={{ color: !filter.sprintId ? '#9ca3af' : '' }}
                     >
-                        <option value="">Tất cả</option>
-                        {sprints.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
+                        <option value="" style={{ color: '#9ca3af', fontStyle: 'italic' }}>— Tất cả Sprint —</option>
+                        {sprints.map(s => <option key={s._id} value={s._id} style={{ color: '#1e293b' }}>{s.name}</option>)}
                     </select>
                 </div>
                 <div>
@@ -159,9 +179,10 @@ const TableView = () => {
                         className="w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm"
                         value={filter.moduleName}
                         onChange={e => setFilter({ ...filter, moduleName: e.target.value })}
+                        style={{ color: !filter.moduleName ? '#9ca3af' : '' }}
                     >
-                        <option value="">Tất cả</option>
-                        {selectedProject?.modules.map((m, idx) => <option key={idx} value={m.name}>{m.name}</option>)}
+                        <option value="" style={{ color: '#9ca3af', fontStyle: 'italic' }}>— Tất cả Module —</option>
+                        {selectedProject?.modules.map((m, idx) => <option key={idx} value={m.name} style={{ color: '#1e293b' }}>{m.name}</option>)}
                     </select>
                 </div>
             </div>
@@ -209,8 +230,8 @@ const TableView = () => {
                                         </td>
                                         <td className="p-4">
                                             <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${t.status === 'DONE' ? 'bg-green-100 text-green-700' :
-                                                    t.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
-                                                        t.status === 'REVIEW' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700'
+                                                t.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
+                                                    t.status === 'REVIEW' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700'
                                                 }`}>
                                                 {t.status}
                                             </span>

@@ -145,7 +145,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const createUser = async (userData: any) => {
     try {
       // If current user is ADMIN, create via /api/users so we don't switch session
-      if (user?.role === 'ADMIN') {
+      if (user?.role === 'QUẢN TRỊ VIÊN') {
         const res = await fetch('/api/users', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${safeStorage.getItem('okr_auth_token')}` },

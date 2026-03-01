@@ -28,7 +28,7 @@ export const Attendance: React.FC = () => {
     const [note, setNote] = useState('');
     const [activeTab, setActiveTab] = useState<'personal' | 'team'>('personal');
     const [departments, setDepartments] = useState<any[]>([]);
-    const [selectedDept, setSelectedDept] = useState(user?.role === 'ADMIN' ? '' : (user?.department || ''));
+    const [selectedDept, setSelectedDept] = useState(user?.role === 'QUẢN TRỊ VIÊN' ? '' : (user?.department || ''));
     // Date filter state
     const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | '2days' | 'custom'>('today');
     const [customDate, setCustomDate] = useState(getDateKey(new Date()));
@@ -52,14 +52,14 @@ export const Attendance: React.FC = () => {
 
     useEffect(() => {
         loadData();
-        if (user?.role !== 'EMPLOYEE') {
+        if (user?.role !== 'NHÂN VIÊN') {
             loadDepartments();
         }
     }, [user]);
 
     // Reload team data when date filter or department changes
     useEffect(() => {
-        if (user?.role !== 'EMPLOYEE' && !loading) {
+        if (user?.role !== 'NHÂN VIÊN' && !loading) {
             loadTeamData();
         }
     }, [dateFilter, customDate, selectedDept]);
@@ -74,7 +74,7 @@ export const Attendance: React.FC = () => {
             setStatus(statusRes);
             setHistory(historyRes);
 
-            if (user?.role !== 'EMPLOYEE') {
+            if (user?.role !== 'NHÂN VIÊN') {
                 await loadTeamData();
             }
         } catch (err) {
@@ -326,7 +326,7 @@ export const Attendance: React.FC = () => {
                                 <span className="material-icons text-lg">person</span>
                                 <span>Lịch sử cá nhân</span>
                             </button>
-                            {user?.role !== 'EMPLOYEE' && (
+                            {user?.role !== 'NHÂN VIÊN' && (
                                 <button
                                     onClick={() => setActiveTab('team')}
                                     className={`flex-1 flex items-center justify-center space-x-2 py-4 rounded-2xl text-sm font-black transition-all ${activeTab === 'team' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}

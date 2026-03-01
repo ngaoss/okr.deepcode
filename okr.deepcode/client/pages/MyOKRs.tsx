@@ -89,7 +89,7 @@ export const MyOKRs: React.FC = () => {
           if (okr?.type === 'PERSONAL') {
             await myOkrService.deleteMyOKR(id);
           } else {
-            if (okr?.ownerId === user?.id || user?.role === 'ADMIN') {
+            if (okr?.ownerId === user?.id || user?.role === 'QUẢN TRỊ VIÊN') {
               await okrService.deleteOKR(id);
             }
           }
@@ -275,7 +275,7 @@ export const MyOKRs: React.FC = () => {
                     >
                       <span className="material-icons text-sm">content_copy</span>
                     </button>
-                    {(user?.role === 'ADMIN' || okr.ownerId === user?.id) && (
+                    {(user?.role === 'QUẢN TRỊ VIÊN' || okr.ownerId === user?.id) && (
                       <button
                         onClick={() => deleteOKR(okr)}
                         disabled={deletingId === okr.id}

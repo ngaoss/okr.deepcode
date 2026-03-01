@@ -24,11 +24,15 @@ export const PersonalKPIs: React.FC = () => {
     const [filterPriority, setFilterPriority] = useState<'ALL' | 'HIGH' | 'MEDIUM' | 'LOW'>('ALL');
 
     const [form, setForm] = useState({
+        title: '',
+        description: '',
+        assignedTo: '',
+        linkedTaskId: '',
         endDate: '',
         weight: 1
     });
 
-    const isManager = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+    const isManager = user?.role === 'QUẢN TRỊ VIÊN' || user?.role === 'TRƯỞNG PHÒNG' || user?.role === 'TRƯỞNG NHÓM';
 
     useEffect(() => {
         loadKPIs();
@@ -88,9 +92,9 @@ export const PersonalKPIs: React.FC = () => {
     const loadUsers = async () => {
         try {
             const data = await userService.getUsers();
-            if (user?.role === 'ADMIN') {
+            if (user?.role === 'QUẢN TRỊ VIÊN') {
                 setUsers(data.filter((u: User) => u.id !== user.id));
-            } else if (user?.role === 'MANAGER') {
+            } else if (user?.role === 'TRƯỞNG PHÒNG' || user?.role === 'TRƯỞNG NHÓM') {
                 const filtered = data.filter((u: User) => u.department === user?.department && u.id !== user.id);
                 setUsers(filtered);
             }

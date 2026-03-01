@@ -44,9 +44,10 @@ export const Workgroups: React.FC = () => {
     // Sort users: MANAGER first, then others
     const sortedUsers = [...allUsers].sort((a, b) => {
         const rolePriority = (role: string) => {
-            if (role === 'MANAGER') return 0;
-            if (role === 'ADMIN') return 1;
-            return 2;
+            if (role === 'TRƯỞNG PHÒNG') return 0;
+            if (role === 'TRƯỞNG NHÓM') return 1;
+            if (role === 'QUẢN TRỊ VIÊN') return 2;
+            return 3;
         };
         return rolePriority(a.role) - rolePriority(b.role);
     });
@@ -243,7 +244,7 @@ export const Workgroups: React.FC = () => {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Trưởng nhóm (Ưu tiên Quản lý)</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Trưởng nhóm (Ưu tiên Trưởng phòng/Trưởng nhóm)</label>
                                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 max-h-40 overflow-y-auto space-y-2 custom-scrollbar">
                                     {sortedUsers.map(u => (
                                         <div
@@ -338,7 +339,7 @@ export const Workgroups: React.FC = () => {
                                     />
                                     <div>
                                         <p className="text-sm font-bold text-slate-800">{typeof viewingGroupMembers.leaderId === 'object' ? viewingGroupMembers.leaderId.name : allUsers.find(u => u.id === viewingGroupMembers.leaderId || u._id === viewingGroupMembers.leaderId)?.name}</p>
-                                        <p className="text-xs text-indigo-600 font-medium">{typeof viewingGroupMembers.leaderId === 'object' ? viewingGroupMembers.leaderId.role : (allUsers.find(u => u.id === viewingGroupMembers.leaderId || u._id === viewingGroupMembers.leaderId)?.role || 'MANAGER')}</p>
+                                        <p className="text-xs text-indigo-600 font-medium">{typeof viewingGroupMembers.leaderId === 'object' ? viewingGroupMembers.leaderId.role : (allUsers.find(u => u.id === viewingGroupMembers.leaderId || u._id === viewingGroupMembers.leaderId)?.role || 'TRƯỞNG PHÒNG')}</p>
                                     </div>
                                 </div>
                             </div>

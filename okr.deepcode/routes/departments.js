@@ -27,7 +27,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
 
 // Create department (admin only)
 router.post('/', authMiddleware, async (req, res) => {
-  if (req.user.role !== 'ADMIN') return res.status(403).json({ message: 'Forbidden' });
+  if (req.user.role !== 'QUẢN TRỊ VIÊN') return res.status(403).json({ message: 'Forbidden' });
   const { name, head, description } = req.body;
   if (!name) return res.status(400).json({ message: 'Missing department name' });
   try {
@@ -42,7 +42,7 @@ router.post('/', authMiddleware, async (req, res) => {
 
 // Update department (admin only)
 router.put('/:id', authMiddleware, async (req, res) => {
-  if (req.user.role !== 'ADMIN') return res.status(403).json({ message: 'Forbidden' });
+  if (req.user.role !== 'QUẢN TRỊ VIÊN') return res.status(403).json({ message: 'Forbidden' });
   const { name, head, description } = req.body;
   try {
     const dep = await Department.findByIdAndUpdate(req.params.id, { name, head, description }, { new: true });
@@ -55,7 +55,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
 
 // Delete department (admin only)
 router.delete('/:id', authMiddleware, async (req, res) => {
-  if (req.user.role !== 'ADMIN') return res.status(403).json({ message: 'Forbidden' });
+  if (req.user.role !== 'QUẢN TRỊ VIÊN') return res.status(403).json({ message: 'Forbidden' });
   try {
     const dep = await Department.findByIdAndDelete(req.params.id);
     if (!dep) return res.status(404).json({ message: 'Not found' });

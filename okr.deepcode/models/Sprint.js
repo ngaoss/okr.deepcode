@@ -12,7 +12,14 @@ const SprintSchema = new mongoose.Schema({
         default: 'PLANNING'
     },
     reviewNotes: String, // Note khách hàng sau review
-    completedAt: Date
+    completedAt: Date,
+    creatorName: String,
+    creatorRole: String,
+    approvalStatus: {
+        type: String,
+        enum: ['APPROVED', 'PENDING', 'REJECTED'],
+        default: 'APPROVED'
+    }
 }, { timestamps: true });
 
 export default mongoose.model('Sprint', SprintSchema);

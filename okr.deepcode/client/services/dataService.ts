@@ -14,7 +14,7 @@ const INITIAL_USERS: User[] = [
     name: 'Quản trị hệ thống',
     email: 'admin@local',
     password: 'admin1234',
-    role: 'ADMIN',
+    role: 'QUẢN TRỊ VIÊN',
     department: 'Ban Giám Đốc',
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin'
   }
@@ -88,7 +88,7 @@ export const dataService = {
         const newUser = {
           ...user,
           id: user.id || `local-${Date.now()}`,
-          role: user.role || 'EMPLOYEE'
+          role: user.role || 'NHÂN VIÊN'
         } as User;
         users.push(newUser);
       }
