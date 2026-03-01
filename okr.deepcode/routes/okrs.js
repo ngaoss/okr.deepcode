@@ -1,0 +1,192 @@
+import express from 'express';
+import Objective from '../models/Objective.js';
+import authMiddleware from '../middleware/auth.js';
+import { dashboardCache, heatmapCache, clearCacheByPattern } from '../utils/cache.js';
+
+const router = express.Router();
+
+// List with optional filters: quarter, year, department
+router.get('/', authMiddleware, async (req, res) => {
+  const { quarter, year, department } = req.query;
+  const filter = {};
+  if (quarter) filter.quarter = quarter;
+  if (year) filter.year = Number(year);
+  if (department) filter.department = department;
+  if (req.query.workgroupId) filter.workgroupId = req.query.workgroupId;
+  if (req.query.type) filter.type = req.query.type;
+  const okrs = await Objective.find(filter).sort({ createdAt: -1 });
+  res.json(okrs);
+});
+
+function validateAndPrepareOKR(body) {
+  if (!body || typeof body !== 'object') throw new Error('Missing body');
+  const { title, keyResults, quarter, year, ownerId, ownerName, department, status, description, type, parentId, priority, tags, startDate, endDate, workgroupId } = body;
+  if (!title || String(title).trim() === '') throw new Error('Missing title');
+  if (!quarter) throw new Error('Missing quarter');
+  if (!year || isNaN(Number(year))) throw new Error('Missing or invalid year');
+  if (!Array.isArray(keyResults)) throw new Error('keyResults must be an array');
+  if (keyResults.length === 0) throw new Error('At least one Key Result is required');
+
+  const cleanedKRs = keyResults.map((kr, idx) => {
+    const krTitle = kr.title || kr.name || '';
+    const unit = kr.unit || '%';
+    const targetValue = kr.targetValue != null ? Number(kr.targetValue) : 100;
+    if (!krTitle || String(krTitle).trim() === '') throw new Error(`KR at index ${idx} is missing title`);
+
+    return {
+      title: String(krTitle).trim(),
+      unit: String(unit).trim(),
+      targetValue: targetValue,
+      currentValue: Number(kr.currentValue || 0),
+      source: kr.source || 'MANUAL',
+      linkedId: kr.linkedId || null,
+      confidenceScore: kr.confidenceScore != null ? Number(kr.confidenceScore) : 10,
+      weight: Number(kr.weight || 1)
+    };
+  });
+
+  return {
+    title: String(title).trim(),
+    description,
+    type: type || 'DEPARTMENT',
+    parentId: parentId || null,
+    priority: priority || 'MEDIUM',
+    tags: Array.isArray(tags) ? tags : [],
+    quarter,
+    year: Number(year),
+    ownerId,
+    ownerName,
+    department,
+    status: status || 'DRAFT',
+    startDate,
+    endDate,
+    workgroupId: workgroupId || null,
+    keyResults: cleanedKRs
+  };
+}
+
+router.post('/', authMiddleware, async (req, res) => {
+  try {
+    const payload = validateAndPrepareOKR(req.body);
+    const okr = await Objective.create(payload);
+    clearCacheByPattern(dashboardCache, '');
+    clearCacheByPattern(heatmapCache, '');
+    res.json(okr);
+  } catch (err) {
+    res.status(400).json({ message: 'Invalid data', error: err.message });
+  }
+});
+
+router.get('/:id', authMiddleware, async (req, res) => {
+  const okr = await Objective.findById(req.params.id);
+  if (!okr) return res.status(404).json({ message: 'Not found' });
+  res.json(okr);
+});
+
+router.put('/:id', authMiddleware, async (req, res) => {
+  try {
+    const okr = await Objective.findById(req.params.id);
+    if (!okr) return res.status(404).json({ message: 'Not found' });
+
+    const payload = validateAndPrepareOKR({ ...okr.toObject(), ...req.body });
+
+    // apply fields
+    okr.title = payload.title;
+    okr.description = payload.description;
+    okr.type = payload.type;
+    okr.parentId = payload.parentId;
+    okr.priority = payload.priority;
+    okr.tags = payload.tags;
+    okr.quarter = payload.quarter;
+    okr.year = payload.year;
+    okr.ownerId = payload.ownerId || okr.ownerId;
+    okr.ownerName = payload.ownerName || okr.ownerName;
+    okr.department = payload.department || okr.department;
+    okr.startDate = payload.startDate;
+    okr.endDate = payload.endDate;
+    okr.workgroupId = payload.workgroupId;
+    if (req.body.status) okr.status = req.body.status;
+    okr.keyResults = payload.keyResults;
+
+    await okr.save(); // Model hook handles progress
+    clearCacheByPattern(dashboardCache, '');
+    clearCacheByPattern(heatmapCache, '');
+    res.json(okr);
+  } catch (err) {
+    res.status(400).json({ message: 'Invalid data', error: err.message });
+  }
+});
+
+router.delete('/:id', authMiddleware, async (req, res) => {
+  await Objective.findByIdAndDelete(req.params.id);
+  clearCacheByPattern(dashboardCache, '');
+  clearCacheByPattern(heatmapCache, '');
+  res.json({ message: 'Deleted' });
+});
+
+// Update status
+router.patch('/:id/status', authMiddleware, async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!status) return res.status(400).json({ message: 'Missing status' });
+    const okr = await Objective.findById(req.params.id);
+    if (!okr) return res.status(404).json({ message: 'Not found' });
+
+    okr.status = status;
+    await okr.save();
+
+    clearCacheByPattern(dashboardCache, '');
+    clearCacheByPattern(heatmapCache, '');
+    res.json(okr);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Key Results CRUD
+router.post('/:id/keyresults', authMiddleware, async (req, res) => {
+  const { title, targetValue, unit, weight } = req.body;
+  if (!title || targetValue == null || !unit) return res.status(400).json({ message: 'Missing fields' });
+
+  const okr = await Objective.findById(req.params.id);
+  if (!okr) return res.status(404).json({ message: 'Not found' });
+
+  okr.keyResults.push({ title, targetValue, unit, currentValue: 0, weight: weight || 1 });
+  await okr.save();
+
+  clearCacheByPattern(dashboardCache, '');
+  res.json(okr);
+});
+
+router.put('/:id/keyresults/:krId', authMiddleware, async (req, res) => {
+  const { title, targetValue, unit, currentValue, weight } = req.body;
+  const okr = await Objective.findById(req.params.id);
+  if (!okr) return res.status(404).json({ message: 'Not found' });
+
+  const kr = okr.keyResults.id(req.params.krId);
+  if (!kr) return res.status(404).json({ message: 'KR not found' });
+
+  if (title) kr.title = title;
+  if (targetValue != null) kr.targetValue = targetValue;
+  if (unit) kr.unit = unit;
+  if (currentValue != null) kr.currentValue = currentValue;
+  if (weight != null) kr.weight = weight;
+
+  await okr.save();
+  clearCacheByPattern(dashboardCache, '');
+  res.json(okr);
+});
+
+router.delete('/:id/keyresults/:krId', authMiddleware, async (req, res) => {
+  const okr = await Objective.findById(req.params.id);
+  if (!okr) return res.status(404).json({ message: 'Not found' });
+
+  okr.keyResults.pull(req.params.krId);
+  await okr.save();
+
+  clearCacheByPattern(dashboardCache, '');
+  res.json(okr);
+});
+
+
+export default router;
