@@ -29,6 +29,7 @@ export interface Task {
 
 export interface KeyResult {
   id?: string;
+  _id?: string;
   title: string;
   currentValue: number;
   targetValue: number;

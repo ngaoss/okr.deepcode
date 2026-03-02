@@ -4,12 +4,14 @@ import { KPI, Objective, User } from '../types';
 import { getKPIs, createKPI, updateKPI, deleteKPI, updateKPIProgress } from '../services/kpiService';
 import { getOKRs, getMyOKRs } from '../services/okrService';
 import { useAuth } from '../context/AuthContext';
+import { useConfirm } from '../context/ConfirmContext';
 import { userService } from '../services/userService';
 import { workgroupService } from '../services/workgroupService';
 import { getDepartments } from '../services/departmentService';
 
 export const DepartmentKPIs: React.FC = () => {
     const { user, selectedPeriod } = useAuth();
+    const { confirm: customConfirm } = useConfirm();
     const [kpis, setKpis] = useState<KPI[]>([]);
     const [okrs, setOkrs] = useState<Objective[]>([]);
     const [personalOkrs, setPersonalOkrs] = useState<any[]>([]);
@@ -164,7 +166,12 @@ export const DepartmentKPIs: React.FC = () => {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Bạn có chắc muốn xóa KPI này?')) return;
+        const ok = await customConfirm({
+            title: 'Xóa KPI?',
+            message: 'Bạn có chắc chắn muốn xóa KPI này không?',
+            type: 'danger'
+        });
+        if (!ok) return;
         setDeletingId(id);
         try {
             await deleteKPI(id);
@@ -180,7 +187,12 @@ export const DepartmentKPIs: React.FC = () => {
 
     const handleBulkDelete = async () => {
         if (selectedIds.length === 0) return;
-        if (!confirm(`Bạn có chắc muốn xóa ${selectedIds.length} KPI đã chọn?`)) return;
+        const ok = await customConfirm({
+            title: 'Xóa nhiều KPI?',
+            message: `Bạn có chắc chắn muốn xóa ${selectedIds.length} KPI đã chọn không?`,
+            type: 'danger'
+        });
+        if (!ok) return;
 
         setIsLoading(true);
         try {
@@ -238,7 +250,12 @@ export const DepartmentKPIs: React.FC = () => {
     };
 
     const handleMarkAsCompleted = async (kpi: KPI) => {
-        if (!confirm(`Xác nhận hoàn thành KPI phòng ban: ${kpi.title}?`)) return;
+        const ok = await customConfirm({
+            title: 'Hoàn thành KPI?',
+            message: `Xác nhận hoàn thành KPI phòng ban: ${kpi.title}?`,
+            type: 'info'
+        });
+        if (!ok) return;
         handleUpdateProgress(kpi.id, 100);
     };
 

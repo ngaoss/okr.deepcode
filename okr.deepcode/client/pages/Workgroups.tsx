@@ -1,12 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useConfirm } from '../context/ConfirmContext';
 import { User } from '../types';
 import { workgroupService, Workgroup } from '../services/workgroupService';
 import { userService } from '../services/userService';
 
 export const Workgroups: React.FC = () => {
     const { user: currentUser } = useAuth();
+    const { confirm: customConfirm } = useConfirm();
     const [workgroups, setWorkgroups] = useState<Workgroup[]>([]);
     const [allUsers, setAllUsers] = useState<User[]>([]);
     const [showModal, setShowModal] = useState(false);
@@ -81,7 +83,12 @@ export const Workgroups: React.FC = () => {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Bạn có chắc muốn xóa nhóm này?')) return;
+        const ok = await customConfirm({
+            title: 'Xóa nhóm?',
+            message: 'Bạn có chắc chắn muốn xóa nhóm này không?',
+            type: 'danger'
+        });
+        if (!ok) return;
         setDeletingId(id);
         try {
             await workgroupService.deleteWorkgroup(id);

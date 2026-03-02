@@ -873,23 +873,23 @@ const GanttChart = () => {
                 <div className="flex gap-8">
                     <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-slate-400 rounded-sm" />
-                        <span>Cần làm (Xám)</span>
+                        <span>Cần làm (Cảnh báo ≤ 14n)</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-sky-500 rounded-sm" />
-                        <span>Đang làm (Blue)</span>
+                        <span>Đang làm (Cảnh báo ≤ 10n)</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-amber-400 rounded-sm" />
-                        <span>Demo (Vàng)</span>
+                        <span>Demo (Cảnh báo ≤ 7n)</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-emerald-500 rounded-sm" />
-                        <span>Xong việc (Xanh lá)</span>
+                        <span>Xong việc</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-rose-500 rounded-sm" />
-                        <span>Cảnh báo Deadline (Đỏ)</span>
+                        <div className="w-3 h-3 bg-rose-500 rounded-sm animate-pulse" />
+                        <span className="text-rose-600">Quá hạn (Đỏ nhấp nháy)</span>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">

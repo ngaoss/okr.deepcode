@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { automationService } from '../services/automationService';
+import { useConfirm } from '../context/ConfirmContext';
 import '../styles/Automation.css';
 
 interface Template {
@@ -14,6 +15,7 @@ interface Template {
 }
 
 const OKRAutomation: React.FC = () => {
+    const { confirm: customConfirm } = useConfirm();
     const [templates, setTemplates] = useState<Template[]>([]);
     const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
     const [quarter, setQuarter] = useState('Q1');
@@ -89,7 +91,12 @@ const OKRAutomation: React.FC = () => {
     };
 
     const handleCleanup = async () => {
-        if (!confirm('⚠️ CẢNH BÁO: Hành động này sẽ XÓA TOÀN BỘ dữ liệu OKR, KPI và Task hiện tại trong hệ thống!\n\nBạn có chắc chắn muốn tiếp tục không?')) return;
+        const ok = await customConfirm({
+            title: 'CẢNH BÁO: Xóa toàn bộ dữ liệu?',
+            message: 'Hành động này sẽ XÓA TOÀN BỘ dữ liệu OKR, KPI và Task hiện tại trong hệ thống!\n\nBạn có chắc chắn muốn tiếp tục không?',
+            type: 'danger'
+        });
+        if (!ok) return;
 
         setIsCleaning(true);
         try {

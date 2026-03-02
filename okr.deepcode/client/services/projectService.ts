@@ -31,6 +31,7 @@ export const sprintService = {
 
 export const taskAgileService = {
     getTasksBySprint: (sprintId: string) => apiRequest(`/tasks-agile/sprint/${sprintId}`),
+    getTasksByProject: (projectId: string) => apiRequest(`/tasks-agile/project/${projectId}`),
     createTask: (data: any) => apiRequest('/tasks-agile', { method: 'POST', body: JSON.stringify(data) }),
     updateTask: (id: string, data: any) => apiRequest(`/tasks-agile/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     deleteTask: (id: string) => apiRequest(`/tasks-agile/${id}`, { method: 'DELETE' }),

@@ -1,12 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useConfirm } from '../context/ConfirmContext';
 import { Task, Objective } from '../types';
 import { dataService } from '../services/dataService';
 import * as myOkrService from '../services/myOkrService';
 
 export const Tasks: React.FC = () => {
   const { user, allUsers, selectedPeriod } = useAuth();
+  const { confirm: customConfirm } = useConfirm();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [okrs, setOkrs] = useState<Objective[]>([]);
   const [myOkrs, setMyOkrs] = useState<Objective[]>([]);
@@ -124,7 +126,12 @@ export const Tasks: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Bạn có chắc muốn xóa công việc này?')) return;
+    const ok = await customConfirm({
+      title: 'Xóa công việc?',
+      message: 'Bạn có chắc chắn muốn xóa công việc này không?',
+      type: 'danger'
+    });
+    if (!ok) return;
     setDeletingId(id);
     try {
       await dataService.deleteTask(id);
@@ -287,7 +294,7 @@ export const Tasks: React.FC = () => {
               </div>
             </div>
             <div className="flex justify-end space-x-3 pt-4 border-t">
-              <button type="button" onClick={() => { setShowModal(false); setEditingTask(null); setFormData({ title: '', description: '', assigneeId: '', krId: '', dueDate: '', priority: 'MEDIUM' }); }} className="px-6 py-2 text-slate-500 font-bold">Hủy</button>
+              <button type="button" onClick={() => { setShowModal(false); setEditingTask(null); setFormData({ title: '', description: '', assigneeId: '', krId: '', kpiId: '', dueDate: '', priority: 'MEDIUM' }); }} className="px-6 py-2 text-slate-500 font-bold">Hủy</button>
               <button type="submit" className="bg-indigo-600 text-white px-8 py-2 rounded-xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all">{editingTask ? 'Lưu thay đổi' : 'Giao việc'}</button>
             </div>
           </form>

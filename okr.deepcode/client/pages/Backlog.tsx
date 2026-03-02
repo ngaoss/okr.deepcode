@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { projectService, featureService, noteAgileService } from '../services/projectService';
 import { useAuth } from '../context/AuthContext';
+import { useConfirm } from '../context/ConfirmContext';
 
 const EMPTY_FEATURE = { title: '', moduleName: '', description: '', acceptanceCriteria: '', priority: 'MEDIUM' };
 const EMPTY_PROJECT = { title: '', description: '', modules: [], assignedManagerId: '' };
 
 const Backlog = () => {
     const { user: currentUser } = useAuth();
+    const { confirm: customConfirm } = useConfirm();
     const role = currentUser?.role || '';
 
     const isAdmin = role === 'QUẢN TRỊ VIÊN';
@@ -146,7 +148,14 @@ const Backlog = () => {
     };
 
     const handleDeleteProject = async (id: string) => {
-        if (!confirm('Xóa dự án sẽ xóa toàn bộ dữ liệu liên quan. Bạn chắc chắn?')) return;
+        const ok = await customConfirm({
+            title: 'Xóa dự án?',
+            message: 'Xóa dự án sẽ xóa toàn bộ dữ liệu liên quan. Bạn chắc chắn?',
+            type: 'danger',
+            confirmText: 'Xóa vĩnh viễn',
+            cancelText: 'Quay lại'
+        });
+        if (!ok) return;
         try {
             await projectService.deleteProject(id);
             const updated = projects.filter((p: any) => p._id !== id);
@@ -173,7 +182,12 @@ const Backlog = () => {
     };
 
     const handleDeleteModule = async (moduleName: string) => {
-        if (!confirm(`Xóa module "${moduleName}"?`)) return;
+        const ok = await customConfirm({
+            title: 'Xóa Module?',
+            message: `Bạn có chắc chắn muốn xóa module "${moduleName}"?`,
+            type: 'warning'
+        });
+        if (!ok) return;
         const updatedModules = (selectedProject.modules || []).filter((m: any) => m.name !== moduleName);
         try {
             const data = await projectService.updateModules(selectedProject._id, updatedModules);
@@ -223,7 +237,12 @@ const Backlog = () => {
     };
 
     const handleDeleteFeature = async (id: string) => {
-        if (!confirm('Xóa feature này?')) return;
+        const ok = await customConfirm({
+            title: 'Xóa Feature?',
+            message: 'Bạn có chắc chắn muốn xóa feature này khỏi backlog?',
+            type: 'warning'
+        });
+        if (!ok) return;
         try {
             await featureService.deleteFeature(id);
             setFeatures(prev => prev.filter((f: any) => f._id !== id));

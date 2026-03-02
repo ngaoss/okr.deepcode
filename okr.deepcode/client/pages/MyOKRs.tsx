@@ -2,12 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { Objective } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { useConfirm } from '../context/ConfirmContext';
 import * as okrService from '../services/okrService';
 import * as myOkrService from '../services/myOkrService';
 import { dataService } from '../services/dataService'; // Ensure this is imported for fallback or remove if not used, but good to have
 
 export const MyOKRs: React.FC = () => {
   const { user, selectedPeriod } = useAuth();
+  const { confirm: customConfirm } = useConfirm();
   const [filterType, setFilterType] = useState<'ALL' | 'PERSONAL' | 'DEPARTMENT' | 'TEAM'>('ALL');
   const [okrs, setOkrs] = useState<Objective[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -79,7 +81,12 @@ export const MyOKRs: React.FC = () => {
 
   const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return;
-    if (!confirm(`Bạn có chắc muốn xóa ${selectedIds.length} OKR đã chọn?`)) return;
+    const ok = await customConfirm({
+      title: 'Xóa nhiều OKR?',
+      message: `Bạn có chắc chắn muốn xóa ${selectedIds.length} OKR đã chọn không?`,
+      type: 'danger'
+    });
+    if (!ok) return;
 
     setIsLoading(true);
     try {
@@ -109,7 +116,12 @@ export const MyOKRs: React.FC = () => {
   };
 
   const deleteOKR = async (okr: Objective) => {
-    if (!confirm('Xóa OKR này?')) return;
+    const ok = await customConfirm({
+      title: 'Xóa OKR?',
+      message: 'Bạn có chắc chắn muốn xóa OKR này không?',
+      type: 'danger'
+    });
+    if (!ok) return;
     const id = okr.id;
     setDeletingId(id);
     try {
@@ -130,7 +142,12 @@ export const MyOKRs: React.FC = () => {
   };
 
   const duplicateOKR = async (okr: Objective) => {
-    if (!confirm(`Tạo bản sao cho OKR: "${okr.title}"?`)) return;
+    const ok = await customConfirm({
+      title: 'Nhân bản OKR?',
+      message: `Tạo bản sao cho OKR: "${okr.title}"?`,
+      type: 'info'
+    });
+    if (!ok) return;
 
     try {
       const payload = {

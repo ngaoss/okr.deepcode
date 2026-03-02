@@ -5,9 +5,11 @@ import { userService } from '../services/userService';
 import { getOKRs } from '../services/okrService';
 import { taskService } from '../services/taskService';
 import { useAuth } from '../context/AuthContext';
+import { useConfirm } from '../context/ConfirmContext';
 
 export const Teams: React.FC = () => {
   const { user: currentUser } = useAuth();
+  const { confirm: customConfirm } = useConfirm();
   const [departments, setDepartments] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ name: '', head: '', description: '' });
@@ -104,7 +106,12 @@ export const Teams: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Bạn có chắc muốn xóa phòng ban này?')) return;
+    const ok = await customConfirm({
+      title: 'Xóa phòng ban?',
+      message: 'Bạn có chắc chắn muốn xóa phòng ban này không?',
+      type: 'danger'
+    });
+    if (!ok) return;
     setDeletingId(id);
     try {
       await deleteDepartment(id);

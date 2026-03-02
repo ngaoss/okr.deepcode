@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { getOKRSuggestions } from '../services/geminiService';
 import { Objective, KeyResult, ObjectiveStatus } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { useConfirm } from '../context/ConfirmContext';
 import { dataService } from '../services/dataService';
 import * as okrService from '../services/okrService';
 import * as myOkrService from '../services/myOkrService';
@@ -10,6 +11,7 @@ import { getDepartments } from '../services/departmentService';
 
 export const OKRs: React.FC = () => {
   const { user, selectedPeriod } = useAuth();
+  const { confirm: customConfirm } = useConfirm();
   const [showModal, setShowModal] = useState(false);
   const [editingOKRId, setEditingOKRId] = useState<string | null>(null);
   const [newObjective, setNewObjective] = useState('');
@@ -240,7 +242,12 @@ export const OKRs: React.FC = () => {
   };
 
   const rejectOKR = async (id: string) => {
-    if (!confirm('Từ chối OKR này?')) return;
+    const ok = await customConfirm({
+      title: 'Từ chối OKR?',
+      message: 'Bạn có chắc chắn muốn từ chối OKR này không?',
+      type: 'warning'
+    });
+    if (!ok) return;
     const okr = okrs.find(o => o.id === id);
     if (!okr) return;
     try {
@@ -304,7 +311,12 @@ export const OKRs: React.FC = () => {
   };
 
   const deleteOKR = async (okr: Objective) => {
-    if (!confirm('Xóa OKR này?')) return;
+    const ok = await customConfirm({
+      title: 'Xóa OKR?',
+      message: 'Bạn có chắc chắn muốn xóa mục tiêu OKR này không? Thao tác này sẽ xóa tất cả kết quả then chốt liên quan.',
+      type: 'danger'
+    });
+    if (!ok) return;
     const id = okr.id;
     setDeletingId(id);
     try {
@@ -344,7 +356,12 @@ export const OKRs: React.FC = () => {
 
   const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return;
-    if (!confirm(`Bạn có chắc muốn xóa ${selectedIds.length} OKR đã chọn?`)) return;
+    const ok = await customConfirm({
+      title: 'Xóa nhiều OKR?',
+      message: `Bạn có chắc chắn muốn xóa ${selectedIds.length} OKR đã chọn không?`,
+      type: 'danger'
+    });
+    if (!ok) return;
 
     setIsLoading(true);
     try {

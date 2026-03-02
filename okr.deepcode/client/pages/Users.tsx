@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useConfirm } from '../context/ConfirmContext';
 import { UserRole } from '../types';
 import { userService } from '../services/userService';
 import { getDepartments } from '../services/departmentService';
@@ -9,6 +10,7 @@ const getUserId = (user: any): string => user?.id || user?._id || '';
 
 export const Users: React.FC = () => {
   const { user: currentUser, allUsers, refreshUsers, logout } = useAuth();
+  const { confirm: customConfirm } = useConfirm();
 
   // State quản lý Modal và Form
   const [showModal, setShowModal] = useState(false);
@@ -149,7 +151,13 @@ export const Users: React.FC = () => {
   };
 
   const handleDelete = async (u: any) => {
-    if (!confirm(`Xóa tài khoản ${u.name}?`)) return;
+    const ok = await customConfirm({
+      title: 'Xóa tài khoản?',
+      message: `Bạn có chắc chắn muốn xóa tài khoản của ${u.name}? Thao tác này không thể hoàn tác.`,
+      type: 'danger',
+      confirmText: 'Xác nhận xóa'
+    });
+    if (!ok) return;
     const targetId = getUserId(u);
     setDeletingId(targetId);
     try {

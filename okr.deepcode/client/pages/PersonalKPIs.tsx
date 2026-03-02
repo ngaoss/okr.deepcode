@@ -4,12 +4,14 @@ import { getKPIs, createKPI, updateKPI, deleteKPI, updateKPIProgress } from '../
 import { getOKRs, getMyOKRsByUser } from '../services/okrService';
 import { userService } from '../services/userService';
 import { useAuth } from '../context/AuthContext';
+import { useConfirm } from '../context/ConfirmContext';
 import { KPI, Objective, User, Task } from '../types';
 
 import { dataService } from '../services/dataService';
 
 export const PersonalKPIs: React.FC = () => {
     const { user, selectedPeriod } = useAuth();
+    const { confirm: customConfirm } = useConfirm();
     const [kpis, setKpis] = useState<KPI[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [okrs, setOkrs] = useState<Objective[]>([]);
@@ -116,7 +118,12 @@ export const PersonalKPIs: React.FC = () => {
     // Creation logic removed as per user request (moved to DepartmentKPIs.tsx)
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Bạn có chắc muốn xóa KPI này?')) return;
+        const ok = await customConfirm({
+            title: 'Xóa KPI?',
+            message: 'Bạn có chắc chắn muốn xóa KPI này không?',
+            type: 'danger'
+        });
+        if (!ok) return;
         setDeletingId(id);
         try {
             await deleteKPI(id);
@@ -142,7 +149,12 @@ export const PersonalKPIs: React.FC = () => {
     };
 
     const handleMarkAsCompleted = async (kpi: KPI) => {
-        if (!confirm(`Xác nhận hoàn thành KPI: ${kpi.title}?`)) return;
+        const ok = await customConfirm({
+            title: 'Hoàn thành KPI?',
+            message: `Xác nhận hoàn thành KPI: ${kpi.title}?`,
+            type: 'info'
+        });
+        if (!ok) return;
         handleUpdateProgress(kpi.id, 100);
     };
 

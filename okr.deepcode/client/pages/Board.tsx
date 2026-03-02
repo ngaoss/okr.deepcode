@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { projectService, sprintService, taskAgileService, featureService } from '../services/projectService';
 import { userService } from '../services/userService';
 import { useAuth } from '../context/AuthContext';
+import { useConfirm } from '../context/ConfirmContext';
 
 const Board = () => {
     const { user: currentUser } = useAuth();
+    const { confirm: customConfirm } = useConfirm();
     const role = currentUser?.role || '';
     const isAdmin = role === 'QUẢN TRỊ VIÊN';
     const isManager = role === 'TRƯỞNG PHÒNG';
@@ -222,7 +224,12 @@ const Board = () => {
     };
 
     const handleDeleteTask = async (id) => {
-        if (!confirm('Bạn có chắc muốn xóa task này?')) return;
+        const ok = await customConfirm({
+            title: 'Xóa Task?',
+            message: 'Bạn có chắc muốn xóa task này khỏi board?',
+            type: 'danger'
+        });
+        if (!ok) return;
         try {
             await taskAgileService.deleteTask(id);
             setTasks(tasks.filter(t => t._id !== id));
@@ -298,23 +305,50 @@ const Board = () => {
             </div>
 
             {selectedProject && (selectedProject.description || selectedProject.assignedLeaderId) && (
-                <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 animate-in fade-in slide-in-from-top-2 shrink-0">
-                    {selectedProject.description && (
-                        <>
-                            <div className="flex items-center gap-2 mb-1">
-                                <span className="material-icons text-indigo-500 text-sm">info</span>
-                                <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Mô tả dự án</p>
+                <div className="flex flex-col md:flex-row gap-4 shrink-0">
+                    <div className="flex-1 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 animate-in fade-in slide-in-from-top-2">
+                        {selectedProject.description && (
+                            <>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <span className="material-icons text-indigo-500 text-sm">info</span>
+                                    <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Mô tả dự án</p>
+                                </div>
+                                <p className="text-sm text-slate-600 italic ml-6">{selectedProject.description}</p>
+                            </>
+                        )}
+                        {selectedProject.assignedLeaderId && (
+                            <div className={`${selectedProject.description ? 'ml-6 mt-1' : ''} flex items-center gap-2`}>
+                                <span className="material-icons text-[14px] text-amber-500">manage_accounts</span>
+                                <span className="text-xs text-slate-500">Trưởng nhóm phụ trách:</span>
+                                <strong className="text-xs text-amber-600">{selectedProject.assignedLeaderId?.name || 'Đã gán'}</strong>
                             </div>
-                            <p className="text-sm text-slate-600 italic ml-6">{selectedProject.description}</p>
-                        </>
-                    )}
-                    {selectedProject.assignedLeaderId && (
-                        <div className={`${selectedProject.description ? 'ml-6 mt-1' : ''} flex items-center gap-2`}>
-                            <span className="material-icons text-[14px] text-amber-500">manage_accounts</span>
-                            <span className="text-xs text-slate-500">Trưởng nhóm phụ trách:</span>
-                            <strong className="text-xs text-amber-600">{selectedProject.assignedLeaderId?.name || 'Đã gán'}</strong>
+                        )}
+                    </div>
+
+                    <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100 animate-in fade-in slide-in-from-top-2">
+                        <div className="flex items-center gap-2 mb-2">
+                            <span className="material-icons text-amber-600 text-sm">tips_and_updates</span>
+                            <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Cảnh báo Deadline</p>
                         </div>
-                    )}
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 ml-6">
+                            <div className="space-y-1">
+                                <p className="text-[9px] font-black text-slate-400 uppercase">Cần làm (TODO)</p>
+                                <p className="text-[10px] font-bold text-slate-600">Cảnh báo: ≤ 14 ngày</p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[9px] font-black text-slate-400 uppercase">Đang làm (IN PROGRESS)</p>
+                                <p className="text-[10px] font-bold text-slate-600">Cảnh báo: ≤ 10 ngày</p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[9px] font-black text-slate-400 uppercase">Demo dự án (REVIEW)</p>
+                                <p className="text-[10px] font-bold text-slate-600">Cảnh báo: ≤ 7 ngày</p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[9px] font-black text-rose-500 uppercase">Quá hạn (OVERDUE)</p>
+                                <p className="text-[10px] font-black text-rose-600 animate-pulse">Trễ Deadline & Chưa Xong</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -576,6 +610,9 @@ const Board = () => {
                                                 </div>
                                             </div>
                                             <h4 className="font-bold text-slate-800 text-sm leading-tight">{task.title}</h4>
+                                            {task.description && (
+                                                <p className="text-[11px] text-slate-500 line-clamp-2 mt-1 italic">{task.description}</p>
+                                            )}
 
                                             {/* Hiển thị tiến trình ngày */}
                                             {totalDays > 0 && (

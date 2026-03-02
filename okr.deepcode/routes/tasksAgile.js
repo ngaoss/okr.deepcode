@@ -15,6 +15,16 @@ router.get('/sprint/:sprintId', authMiddleware, async (req, res) => {
     }
 });
 
+// Lấy danh sách task của một Project
+router.get('/project/:projectId', authMiddleware, async (req, res) => {
+    try {
+        const tasks = await TaskAgile.find({ projectId: req.params.projectId }).sort({ createdAt: -1 });
+        res.json(tasks);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 // Tạo Task mới cho một Feature
 router.post('/', authMiddleware, async (req, res) => {
     try {

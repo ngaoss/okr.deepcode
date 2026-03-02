@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { featureService, noteAgileService, projectService } from '../services/projectService';
+import { useConfirm } from '../context/ConfirmContext';
 
 const EMPTY_NOTE = { title: '', type: '', content: '', targetType: 'PROJECT', targetId: '' };
 
 const Notes = () => {
+    const { confirm: customConfirm } = useConfirm();
     const [projects, setProjects] = useState([]);
     const [selectedProject, setSelectedProject] = useState(null);
     const [notes, setNotes] = useState([]);
@@ -115,7 +117,12 @@ const Notes = () => {
 
     const handleDeleteNote = async (noteId) => {
         if (!selectedProject?._id) return;
-        if (!confirm('Bạn có chắc muốn xóa ghi chú này?')) return;
+        const ok = await customConfirm({
+            title: 'Xóa ghi chú?',
+            message: 'Bạn có chắc chắn muốn xóa ghi chú này không?',
+            type: 'danger'
+        });
+        if (!ok) return;
         try {
             await noteAgileService.deleteNote(noteId);
             await fetchNotes(selectedProject._id);

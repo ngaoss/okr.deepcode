@@ -48,7 +48,8 @@ async function loadRoutes() {
     { path: './routes/features.js', mount: '/api/features' },
     { path: './routes/sprints.js', mount: '/api/sprints' },
     { path: './routes/tasksAgile.js', mount: '/api/tasks-agile' },
-    { path: './routes/notesAgile.js', mount: '/api/notes-agile' }
+    { path: './routes/notesAgile.js', mount: '/api/notes-agile' },
+    { path: './routes/meetings.js', mount: '/api/meetings' }
   ]
 
   for (const route of routeConfigs) {
@@ -154,7 +155,7 @@ async function start() {
   serveFrontend()
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Running on http://0.0.0.0:${PORT}`)
+    console.log(`🚀 Running on localhost:${PORT}`)
   })
 }
 

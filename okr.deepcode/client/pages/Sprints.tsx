@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { featureService, projectService, sprintService } from '../services/projectService';
 import { useAuth } from '../context/AuthContext';
+import { useConfirm } from '../context/ConfirmContext';
 
 const Sprints = () => {
     const { user: currentUser } = useAuth();
+    const { confirm: customConfirm } = useConfirm();
     const role = currentUser?.role || '';
     const isAdmin = role === 'QUẢN TRỊ VIÊN';
     const isManager = role === 'TRƯỞNG PHÒNG';
@@ -113,7 +115,12 @@ const Sprints = () => {
     };
 
     const handleDeleteSprint = async (id) => {
-        if (!confirm('Xóa Sprint sẽ đưa các task về Backlog. Bạn chắc chắn?')) return;
+        const ok = await customConfirm({
+            title: 'Xóa Sprint?',
+            message: 'Xóa Sprint sẽ đưa các task liên quan về Backlog. Bạn có chắc chắn muốn xóa?',
+            type: 'warning'
+        });
+        if (!ok) return;
         try {
             await sprintService.deleteSprint(id);
             if (activeSprint?._id === id) setActiveSprint(null);
