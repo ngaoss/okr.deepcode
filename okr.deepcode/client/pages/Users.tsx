@@ -131,8 +131,8 @@ export const Users: React.FC = () => {
         delete payload._id;
         await userService.updateUser(editingUserId, payload);
       } else {
-        if (!formData.password) { alert("Vui lòng nhập mật khẩu."); setIsSubmitting(false); return; }
-        if (!formData.department) { alert("Vui lòng chọn phòng ban."); setIsSubmitting(false); return; }
+        if (!formData.password) { await customConfirm({ title: 'Lưu ý', message: "Vui lòng nhập mật khẩu.", type: 'warning', isAlert: true }); setIsSubmitting(false); return; }
+        if (!formData.department) { await customConfirm({ title: 'Lưu ý', message: "Vui lòng chọn phòng ban.", type: 'warning', isAlert: true }); setIsSubmitting(false); return; }
 
         const newUserPayload = {
           ...formData,
@@ -144,7 +144,7 @@ export const Users: React.FC = () => {
       setShowModal(false);
       resetForm();
     } catch (err: any) {
-      alert(err?.message || 'Thao tác thất bại');
+      await customConfirm({ title: 'Lỗi', message: err?.message || 'Thao tác thất bại', type: 'danger', isAlert: true });
     } finally {
       setIsSubmitting(false);
     }
@@ -164,7 +164,7 @@ export const Users: React.FC = () => {
       await userService.deleteUser(targetId);
       await refreshUsers();
     } catch (err: any) {
-      alert(err?.message || 'Xóa thất bại');
+      await customConfirm({ title: 'Lỗi', message: err?.message || 'Xóa thất bại', type: 'danger', isAlert: true });
     } finally {
       setDeletingId(null);
     }

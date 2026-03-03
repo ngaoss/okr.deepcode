@@ -1,12 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useConfirm } from '../context/ConfirmContext';
 import { scheduleService, WorkScheduleRecord, ScheduleSummary } from '../services/scheduleService';
 import { getDepartments } from '../services/departmentService';
 import { WorkSchedule } from '../types';
 
 export const WorkSchedulePage: React.FC = () => {
     const { user } = useAuth();
+    const { confirm: customConfirm } = useConfirm();
     const [mySchedules, setMySchedules] = useState<WorkScheduleRecord[]>([]);
     const [allSchedules, setAllSchedules] = useState<WorkScheduleRecord[]>([]);
     const [report, setReport] = useState<ScheduleSummary[]>([]);
@@ -93,7 +95,7 @@ export const WorkSchedulePage: React.FC = () => {
             }
             loadInitialData();
         } catch (err) {
-            alert('Không thể cập nhật lịch làm việc');
+            await customConfirm({ title: 'Lỗi', message: 'Không thể cập nhật lịch làm việc', type: 'danger', isAlert: true });
         } finally {
             setIsUpdating(false);
         }
@@ -116,7 +118,7 @@ export const WorkSchedulePage: React.FC = () => {
             setSelectedDateKeys([]);
             setIsMultiSelect(false);
         } catch (err) {
-            alert('Không thể cập nhật lịch làm việc hàng loạt');
+            await customConfirm({ title: 'Lỗi', message: 'Không thể cập nhật lịch làm việc hàng loạt', type: 'danger', isAlert: true });
         } finally {
             setIsUpdating(false);
         }

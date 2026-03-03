@@ -87,7 +87,7 @@ const Sprints = () => {
     const handleCreateSprint = async (e) => {
         e.preventDefault();
         if (!newSprint.durationDays || newSprint.durationDays < 1) {
-            alert('Số ngày sprint phải ít nhất là 1!');
+            await customConfirm({ title: 'Lưu ý', message: 'Số ngày sprint phải ít nhất là 1!', type: 'warning', isAlert: true });
             return;
         }
         const resolvedStartDate = newSprint.startDate || new Date().toISOString().split('T')[0];
@@ -110,7 +110,7 @@ const Sprints = () => {
             setNewSprint({ name: '', startDate: '', durationDays: 14, goal: '' });
             refreshProjectBoards(selectedProject._id);
         } catch (err) {
-            alert('Lỗi lưu sprint: ' + err.message);
+            await customConfirm({ title: 'Lỗi', message: 'Lỗi lưu sprint: ' + err.message, type: 'danger', isAlert: true });
         }
     };
 
@@ -126,7 +126,7 @@ const Sprints = () => {
             if (activeSprint?._id === id) setActiveSprint(null);
             refreshProjectBoards(selectedProject._id);
         } catch (err) {
-            alert('Lỗi xóa sprint: ' + err.message);
+            await customConfirm({ title: 'Lỗi', message: 'Lỗi xóa sprint: ' + err.message, type: 'danger', isAlert: true });
         }
     };
 
@@ -154,7 +154,7 @@ const Sprints = () => {
             setSprints(sprints.map(s => s._id === sprintId ? data : (s.status === 'ACTIVE' ? { ...s, status: 'COMPLETED' } : s)));
             setActiveSprint(data);
         } catch (err) {
-            alert('Lỗi kích hoạt sprint: ' + err.message);
+            await customConfirm({ title: 'Lỗi', message: 'Lỗi kích hoạt sprint: ' + err.message, type: 'danger', isAlert: true });
         }
     };
 
@@ -162,7 +162,7 @@ const Sprints = () => {
         const featureId = explicitFeatureId || draggingFeatureId;
         if (!featureId || !selectedProject?._id) return;
         if (!canManageFeature) {
-            alert('Bạn không có quyền chuyển đổi feature này!');
+            await customConfirm({ title: 'Lưu ý', message: 'Bạn không có quyền chuyển đổi feature này!', type: 'warning', isAlert: true });
             return;
         }
         try {
@@ -171,7 +171,7 @@ const Sprints = () => {
             setDropSprintId(null);
             refreshProjectBoards(selectedProject._id);
         } catch (err: any) {
-            alert('Lỗi thêm feature vào sprint: ' + err.message);
+            await customConfirm({ title: 'Lỗi', message: 'Lỗi thêm feature vào sprint: ' + err.message, type: 'danger', isAlert: true });
         }
     };
 
@@ -188,7 +188,7 @@ const Sprints = () => {
             });
             refreshProjectBoards(selectedProject._id);
         } catch (err: any) {
-            alert('Lỗi duyệt sprint: ' + err.message);
+            await customConfirm({ title: 'Lỗi', message: 'Lỗi duyệt sprint: ' + err.message, type: 'danger', isAlert: true });
         }
     };
 

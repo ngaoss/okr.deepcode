@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { projectService, featureService, noteAgileService } from '../services/projectService';
+import { workgroupService } from '../services/workgroupService';
 import { useAuth } from '../context/AuthContext';
 import { useConfirm } from '../context/ConfirmContext';
 
@@ -26,6 +27,7 @@ const Backlog = () => {
     const [newProject, setNewProject] = useState(EMPTY_PROJECT);
     const [managers, setManagers] = useState([]);
     const [leaders, setLeaders] = useState([]);
+    const [workgroups, setWorkgroups] = useState<any[]>([]);
     const [tempSelectedLeaderId, setTempSelectedLeaderId] = useState<string | null>(null);
     const [modulesInput, setModulesInput] = useState('');
 
@@ -76,10 +78,14 @@ const Backlog = () => {
 
     const fetchLeaders = async () => {
         try {
-            const data = await projectService.getLeaders();
-            setLeaders(data || []);
+            const [leadersData, groupsData] = await Promise.all([
+                projectService.getLeaders(),
+                workgroupService.getWorkgroups()
+            ]);
+            setLeaders(leadersData || []);
+            setWorkgroups(groupsData || []);
         } catch (err) {
-            console.error('Lỗi lấy trưởng nhóm:', err);
+            console.error('Lỗi lấy trưởng nhóm/nhóm:', err);
         }
     };
 
@@ -89,9 +95,9 @@ const Backlog = () => {
             const data = await projectService.updateProject(selectedProject._id, { assignedLeaderId: tempSelectedLeaderId });
             setProjects(prev => prev.map((p: any) => p._id === data._id ? data : p));
             setSelectedProject(data);
-            alert('Đã lưu phân công Trưởng nhóm thành công!');
+            await customConfirm({ title: 'Thành công', message: 'Đã lưu phân công Trưởng nhóm thành công!', type: 'info', isAlert: true });
         } catch (err: any) {
-            alert('Lỗi gán trưởng nhóm: ' + err.message);
+            await customConfirm({ title: 'Lỗi', message: 'Lỗi gán trưởng nhóm: ' + err.message, type: 'danger', isAlert: true });
         }
     };
 
@@ -143,7 +149,7 @@ const Backlog = () => {
             setIsAddingProject(false);
             setEditingProject(null);
         } catch (err: any) {
-            alert('Lỗi lưu dự án: ' + err.message);
+            await customConfirm({ title: 'Lỗi', message: 'Lỗi lưu dự án: ' + (err.message || 'Lỗi không xác định'), type: 'danger', isAlert: true });
         }
     };
 
@@ -162,7 +168,7 @@ const Backlog = () => {
             setProjects(updated);
             setSelectedProject(updated[0] || null);
         } catch (err: any) {
-            alert('Lỗi xóa dự án: ' + err.message);
+            await customConfirm({ title: 'Lỗi', message: 'Lỗi xóa dự án: ' + (err.message || 'Lỗi không xác định'), type: 'danger', isAlert: true });
         }
     };
 
@@ -177,7 +183,7 @@ const Backlog = () => {
             setNewModuleName('');
             setIsAddingModule(false);
         } catch (err: any) {
-            alert('Lỗi thêm module: ' + err.message);
+            await customConfirm({ title: 'Lỗi', message: 'Lỗi thêm module: ' + (err.message || 'Lỗi không xác định'), type: 'danger', isAlert: true });
         }
     };
 
@@ -195,7 +201,7 @@ const Backlog = () => {
             setSelectedProject(data);
             setFeatures(prev => prev.filter((f: any) => f.moduleName !== moduleName));
         } catch (err: any) {
-            alert('Lỗi xóa module: ' + err.message);
+            await customConfirm({ title: 'Lỗi', message: 'Lỗi xóa module: ' + (err.message || 'Lỗi không xác định'), type: 'danger', isAlert: true });
         }
     };
 
@@ -232,7 +238,7 @@ const Backlog = () => {
             setIsAddingFeature(false);
             setNewFeature(EMPTY_FEATURE);
         } catch (err: any) {
-            alert('Lỗi lưu feature: ' + err.message);
+            await customConfirm({ title: 'Lỗi', message: 'Lỗi lưu feature: ' + (err.message || 'Lỗi không xác định'), type: 'danger', isAlert: true });
         }
     };
 
@@ -247,7 +253,7 @@ const Backlog = () => {
             await featureService.deleteFeature(id);
             setFeatures(prev => prev.filter((f: any) => f._id !== id));
         } catch (err: any) {
-            alert('Lỗi xóa feature: ' + err.message);
+            await customConfirm({ title: 'Lỗi', message: 'Lỗi xóa feature: ' + (err.message || 'Lỗi không xác định'), type: 'danger', isAlert: true });
         }
     };
 
@@ -392,6 +398,39 @@ const Backlog = () => {
                                     );
                                 })}
                             </div>
+
+                            {/* Hiển thị thành viên của nhóm được chọn */}
+                            {tempSelectedLeaderId && (
+                                <div className="mt-4 p-4 bg-white rounded-xl border border-amber-100 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+                                    {(() => {
+                                        const group = workgroups.find(wg => (wg.leaderId?._id || wg.leaderId) === tempSelectedLeaderId);
+                                        if (!group) return <p className="text-xs text-slate-400 italic ml-2">Người này chưa được gán làm trưởng nhóm nào.</p>;
+                                        return (
+                                            <>
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <span className="material-icons text-amber-500 text-sm">groups</span>
+                                                    <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">
+                                                        Thành viên trong nhóm: <span className="text-slate-800">{group.name}</span> ({group.members?.length || 0})
+                                                    </p>
+                                                </div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {group.members?.map((member: any) => (
+                                                        <div key={member._id || member} className="flex items-center gap-2 px-3 py-1.5 bg-amber-50/50 border border-amber-100 rounded-lg group hover:bg-white transition-colors">
+                                                            <img
+                                                                src={member.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.name}`}
+                                                                className="w-5 h-5 rounded-full border border-amber-200"
+                                                                alt=""
+                                                            />
+                                                            <span className="text-xs font-bold text-slate-700">{member.name}</span>
+                                                            <span className="text-[9px] font-bold text-amber-600 bg-amber-100 px-1.5 rounded">{member.role === 'TRƯỞNG NHÓM' ? 'LEADER' : 'STAFF'}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </>
+                                        );
+                                    })()}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -435,6 +474,38 @@ const Backlog = () => {
                                     </div>
                                 ))}
                             </div>
+
+                            {/* Hiển thị thành viên nếu chọn trưởng phòng nhưng người đó cũng là trưởng nhóm */}
+                            {newProject.assignedManagerId && (
+                                <div className="mt-2 p-4 bg-white rounded-xl border border-blue-100 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+                                    {(() => {
+                                        const group = workgroups.find(wg => (wg.leaderId?._id || wg.leaderId) === newProject.assignedManagerId);
+                                        if (!group) return <p className="text-xs text-slate-400 italic">Trưởng phòng này chưa gán vào nhóm nào cụ thể.</p>;
+                                        return (
+                                            <>
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <span className="material-icons text-blue-500 text-sm">groups</span>
+                                                    <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest">
+                                                        Thành viên trong nhóm: <span className="text-slate-800">{group.name}</span> ({group.members?.length || 0})
+                                                    </p>
+                                                </div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {group.members?.map((member: any) => (
+                                                        <div key={member._id || member} className="flex items-center gap-2 px-3 py-1.5 bg-blue-50/50 border border-blue-100 rounded-lg">
+                                                            <img
+                                                                src={member.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.name}`}
+                                                                className="w-5 h-5 rounded-full border border-blue-200"
+                                                                alt=""
+                                                            />
+                                                            <span className="text-xs font-bold text-slate-700">{member.name}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </>
+                                        );
+                                    })()}
+                                </div>
+                            )}
                         </div>
                         <input
                             className="px-4 py-2 border rounded-lg focus:ring-2 ring-blue-500"

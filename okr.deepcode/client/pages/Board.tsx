@@ -161,8 +161,8 @@ const Board = () => {
         try {
             const updated = await taskAgileService.updateTask(taskId, { status: newStatus });
             setTasks(tasks.map(t => t._id === taskId ? updated : t));
-        } catch (err) {
-            alert('Lỗi cập nhật trạng thái: ' + err.message);
+        } catch (err: any) {
+            await customConfirm({ title: 'Lỗi', message: 'Lỗi cập nhật trạng thái: ' + err.message, type: 'danger', isAlert: true });
         }
     };
 
@@ -175,12 +175,12 @@ const Board = () => {
         }
         // Validate: phải chọn feature
         if (!newTask.featureId) {
-            alert('Vui lòng chọn Feature cho công việc!');
+            await customConfirm({ title: 'Thông báo', message: 'Vui lòng chọn Feature cho công việc!', type: 'warning', isAlert: true });
             return;
         }
         // Validate: durationDays >= 1
         if (!newTask.durationDays || newTask.durationDays < 1) {
-            alert('Số ngày hết hạn phải ít nhất là 1!');
+            await customConfirm({ title: 'Thông báo', message: 'Số ngày hết hạn phải ít nhất là 1!', type: 'warning', isAlert: true });
             return;
         }
 
@@ -218,8 +218,8 @@ const Board = () => {
             setIsAddingTask(false);
             setShowAssigneeError(false);
             setNewTask(emptyTask());
-        } catch (err) {
-            alert('Lỗi lưu task: ' + err.message);
+        } catch (err: any) {
+            await customConfirm({ title: 'Lỗi', message: 'Lỗi lưu task: ' + err.message, type: 'danger', isAlert: true });
         }
     };
 
@@ -233,8 +233,8 @@ const Board = () => {
         try {
             await taskAgileService.deleteTask(id);
             setTasks(tasks.filter(t => t._id !== id));
-        } catch (err) {
-            alert('Lỗi xóa task: ' + err.message);
+        } catch (err: any) {
+            await customConfirm({ title: 'Lỗi', message: 'Lỗi xóa task: ' + err.message, type: 'danger', isAlert: true });
         }
     };
 
@@ -451,7 +451,7 @@ const Board = () => {
                                 </div>
                             )}
                             <div className="max-h-52 overflow-y-auto border rounded-xl bg-slate-50 p-2 grid gap-2 custom-scrollbar md:grid-cols-2 lg:grid-cols-3">
-                                {users.map((u: any) => (
+                                {users.filter(u => u.role === 'NHÂN VIÊN').map((u: any) => (
                                     <div
                                         key={u.id || u._id}
                                         onClick={() => setNewTask({ ...newTask, assigneeName: u.name })}

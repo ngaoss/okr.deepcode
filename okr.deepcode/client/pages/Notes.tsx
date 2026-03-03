@@ -85,7 +85,7 @@ const Notes = () => {
                 });
             } else {
                 if (!newNote.type) {
-                    alert('Vui lòng chọn loại ghi chú!');
+                    await customConfirm({ title: 'Lưu ý', message: 'Vui lòng chọn loại ghi chú!', type: 'warning', isAlert: true });
                     return;
                 }
                 const isFeatureNote = newNote.targetType === 'FEATURE' && newNote.targetId !== '';
@@ -98,8 +98,8 @@ const Notes = () => {
 
             await fetchNotes(selectedProject._id);
             resetNoteForm();
-        } catch (err) {
-            alert(err.message);
+        } catch (err: any) {
+            await customConfirm({ title: 'Lỗi', message: err.message, type: 'danger', isAlert: true });
         }
     };
 
@@ -127,8 +127,8 @@ const Notes = () => {
             await noteAgileService.deleteNote(noteId);
             await fetchNotes(selectedProject._id);
             if (editingNote?._id === noteId) resetNoteForm();
-        } catch (err) {
-            alert(err.message);
+        } catch (err: any) {
+            await customConfirm({ title: 'Lỗi', message: err.message, type: 'danger', isAlert: true });
         }
     };
 

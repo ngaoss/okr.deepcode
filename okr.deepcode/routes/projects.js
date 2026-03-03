@@ -1,6 +1,7 @@
 import express from 'express';
 import Project from '../models/Project.js';
 import User from '../models/User.js';
+import Workgroup from '../models/Workgroup.js';
 import authMiddleware from '../middleware/auth.js';
 
 const router = express.Router();
@@ -49,6 +50,13 @@ router.get('/', authMiddleware, async (req, res) => {
                 queryPaths.push({ assignedLeaderId: req.user.id });
                 queryPaths.push({ ownerId: req.user.id });
             } else if (req.user.role === 'NHÂN VIÊN') {
+                // TÌM CÁC NHÓM MÀ NHÂN VIÊN NÀY THAM GIA
+                const myGroups = await Workgroup.find({ members: req.user.id });
+                if (myGroups.length > 0) {
+                    const leaderIds = myGroups.map(wg => wg.leaderId);
+                    queryPaths.push({ assignedLeaderId: { $in: leaderIds } });
+                }
+
                 if (req.user.supervisorId) {
                     queryPaths.push({ assignedLeaderId: req.user.supervisorId });
                 }
@@ -116,7 +124,11 @@ router.put('/:id', authMiddleware, async (req, res) => {
                 project.assignedLeaderId = req.body.assignedLeaderId || null;
             }
             await project.save();
-            return res.json(project);
+            const populated = await project.populate([
+                { path: 'assignedManagerId', select: 'name email department avatar' },
+                { path: 'assignedLeaderId', select: 'name email department avatar' }
+            ]);
+            return res.json(populated);
         } else {
             return res.status(403).json({ message: 'Không có quyền sửa dự án' });
         }

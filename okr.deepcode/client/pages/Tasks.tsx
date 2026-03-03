@@ -138,7 +138,7 @@ export const Tasks: React.FC = () => {
       await loadData();
       window.dispatchEvent(new CustomEvent('okrUpdated'));
     } catch (err: any) {
-      alert(err?.message || 'Không thể xóa công việc');
+      await customConfirm({ title: 'Lỗi', message: err?.message || 'Không thể xóa công việc', type: 'danger', isAlert: true });
     } finally {
       setDeletingId(null);
     }

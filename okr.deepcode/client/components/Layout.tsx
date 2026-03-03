@@ -123,9 +123,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar pb-10">
           <div className="mb-4 space-y-1">
             <NavLink to="/" icon="dashboard" title="Bảng điều khiển">{isSidebarCollapsed ? '' : 'Bảng điều khiển'}</NavLink>
-            <NavLink to="/gantt" icon="timeline" title="Biểu đồ Gantt">{isSidebarCollapsed ? '' : 'Biểu đồ Gantt'}</NavLink>
           </div>
-
           <NavGroup title={isSidebarCollapsed ? '' : 'Quản lý Công việc'} icon="business_center" defaultOpen={true} isCollapsed={isSidebarCollapsed}>
             <NavLink to="/attendance" icon="fingerprint">{isSidebarCollapsed ? '' : 'Điểm danh'}</NavLink>
             <NavLink to="/schedules" icon="event_note">{isSidebarCollapsed ? '' : 'Lịch làm việc'}</NavLink>
@@ -140,6 +138,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 <NavLink to="/project-notes" icon="note_alt">{isSidebarCollapsed ? '' : 'Ghi chú & Note'}</NavLink>
               </>
             )}
+            <NavLink to="/gantt" icon="timeline" title="Biểu đồ Gantt">{isSidebarCollapsed ? '' : 'Biểu đồ Gantt'}</NavLink>
           </NavGroup>
 
           <NavGroup title={isSidebarCollapsed ? '' : 'Mục tiêu OKR'} icon="track_changes" isCollapsed={isSidebarCollapsed}>

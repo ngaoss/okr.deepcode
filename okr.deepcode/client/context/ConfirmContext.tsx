@@ -6,6 +6,7 @@ interface ConfirmOptions {
   confirmText?: string;
   cancelText?: string;
   type?: 'danger' | 'warning' | 'info';
+  isAlert?: boolean;
 }
 
 interface ConfirmContextType {
@@ -17,7 +18,7 @@ const ConfirmContext = createContext<ConfirmContextType | undefined>(undefined);
 export const ConfirmProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [options, setOptions] = useState<ConfirmOptions | null>(null);
-  const [resolve, setResolve] = useState<(value: boolean) => void>(() => {});
+  const [resolve, setResolve] = useState<(value: boolean) => void>(() => { });
 
   const confirm = (opts: ConfirmOptions): Promise<boolean> => {
     setOptions(opts);
@@ -93,12 +94,14 @@ const ConfirmModal: React.FC<{
         </div>
 
         <div className="flex gap-3">
-          <button
-            onClick={onCancel}
-            className="flex-1 px-6 py-4 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors"
-          >
-            {cancelText || 'Hủy bỏ'}
-          </button>
+          {!options.isAlert && (
+            <button
+              onClick={onCancel}
+              className="flex-1 px-6 py-4 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              {cancelText || 'Hủy bỏ'}
+            </button>
+          )}
           <button
             onClick={onConfirm}
             className={`flex-1 px-6 py-4 rounded-2xl text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-indigo-100 transition-all hover:-translate-y-1 active:translate-y-0 ${theme.btn}`}

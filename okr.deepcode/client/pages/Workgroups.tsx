@@ -12,6 +12,7 @@ export const Workgroups: React.FC = () => {
     const [workgroups, setWorkgroups] = useState<Workgroup[]>([]);
     const [allUsers, setAllUsers] = useState<User[]>([]);
     const [showModal, setShowModal] = useState(false);
+    const canManage = currentUser?.role === 'QUẢN TRỊ VIÊN' || currentUser?.role === 'TRƯỞNG PHÒNG';
     const [isLoading, setIsLoading] = useState(true);
     const [editingGroup, setEditingGroup] = useState<Workgroup | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -54,6 +55,18 @@ export const Workgroups: React.FC = () => {
         return rolePriority(a.role) - rolePriority(b.role);
     });
 
+    const otherGroupsBusyIds = new Set<string>();
+    workgroups
+        .filter(wg => !editingGroup || (wg._id !== (editingGroup._id || editingGroup.id) && wg.id !== (editingGroup._id || editingGroup.id)))
+        .forEach(wg => {
+            const lId = typeof wg.leaderId === 'object' ? (wg.leaderId._id || wg.leaderId.id) : wg.leaderId;
+            if (lId) otherGroupsBusyIds.add(lId.toString());
+            wg.members?.forEach((m: any) => {
+                const mId = typeof m === 'object' ? (m._id || m.id) : m;
+                if (mId) otherGroupsBusyIds.add(mId.toString());
+            });
+        });
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
@@ -67,7 +80,7 @@ export const Workgroups: React.FC = () => {
             setEditingGroup(null);
             setFormData({ name: '', description: '', leaderId: '', members: [] });
         } catch (err: any) {
-            alert(err?.message || 'Không thể lưu nhóm');
+            await customConfirm({ title: 'Lỗi', message: err?.message || 'Không thể lưu nhóm', type: 'danger', isAlert: true });
         }
     };
 
@@ -94,7 +107,7 @@ export const Workgroups: React.FC = () => {
             await workgroupService.deleteWorkgroup(id);
             await loadData();
         } catch (err: any) {
-            alert(err?.message || 'Không thể xóa nhóm');
+            await customConfirm({ title: 'Lỗi', message: err?.message || 'Không thể xóa nhóm', type: 'danger', isAlert: true });
         } finally {
             setDeletingId(null);
         }
@@ -128,17 +141,19 @@ export const Workgroups: React.FC = () => {
                     <h2 className="text-2xl font-bold text-slate-800">Nhóm làm việc</h2>
                     <p className="text-slate-500 text-sm">Quản lý các nhóm dự án và phối hợp giữa các thành viên.</p>
                 </div>
-                <button
-                    onClick={() => {
-                        setEditingGroup(null);
-                        setFormData({ name: '', description: '', leaderId: '', members: [] });
-                        setShowModal(true);
-                    }}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold flex items-center space-x-2 shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all"
-                >
-                    <span className="material-icons">group_add</span>
-                    <span>Tạo nhóm mới</span>
-                </button>
+                {canManage && (
+                    <button
+                        onClick={() => {
+                            setEditingGroup(null);
+                            setFormData({ name: '', description: '', leaderId: '', members: [] });
+                            setShowModal(true);
+                        }}
+                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold flex items-center space-x-2 shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all"
+                    >
+                        <span className="material-icons">group_add</span>
+                        <span>Tạo nhóm mới</span>
+                    </button>
+                )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -204,14 +219,18 @@ export const Workgroups: React.FC = () => {
                             </div>
 
                             <div className="pt-4 border-t flex justify-end items-center space-x-3">
-                                <button onClick={() => handleEdit(group)} className="text-indigo-600 text-sm font-bold hover:underline py-1 px-2 hover:bg-indigo-50 rounded-md transition-all">Sửa</button>
-                                <button
-                                    onClick={() => handleDelete(group.id || group._id!)}
-                                    disabled={deletingId === (group.id || group._id)}
-                                    className="text-rose-600 text-sm font-bold hover:underline py-1 px-2 hover:bg-rose-50 rounded-md transition-all"
-                                >
-                                    {deletingId === (group.id || group._id) ? 'Đang xóa…' : 'Xóa'}
-                                </button>
+                                {canManage && (
+                                    <>
+                                        <button onClick={() => handleEdit(group)} className="text-indigo-600 text-sm font-bold hover:underline py-1 px-2 hover:bg-indigo-50 rounded-md transition-all">Sửa</button>
+                                        <button
+                                            onClick={() => handleDelete(group.id || group._id!)}
+                                            disabled={deletingId === (group.id || group._id)}
+                                            className="text-rose-600 text-sm font-bold hover:underline py-1 px-2 hover:bg-rose-50 rounded-md transition-all"
+                                        >
+                                            {deletingId === (group.id || group._id) ? 'Đang xóa…' : 'Xóa'}
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     );
@@ -251,54 +270,58 @@ export const Workgroups: React.FC = () => {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Trưởng nhóm (Ưu tiên Trưởng phòng/Trưởng nhóm)</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Trưởng nhóm (Chỉ hiển thị người chưa có nhóm)</label>
                                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 max-h-40 overflow-y-auto space-y-2 custom-scrollbar">
-                                    {sortedUsers.map(u => (
-                                        <div
-                                            key={u.id || u._id}
-                                            onClick={() => setFormData({ ...formData, leaderId: u.id || u._id! })}
-                                            className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all ${formData.leaderId === (u.id || u._id) ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-white bg-transparent'
-                                                }`}
-                                        >
-                                            <div className="flex items-center space-x-3">
-                                                <img src={u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.name}`} className="w-8 h-8 rounded-full border border-slate-200" alt="" />
-                                                <div>
-                                                    <p className="text-sm font-bold">{u.name}</p>
-                                                    <p className={`text-[10px] uppercase font-bold ${formData.leaderId === (u.id || u._id) ? 'text-indigo-100' : 'text-slate-400'}`}>
-                                                        {u.role} • {u.department}
-                                                    </p>
+                                    {allUsers
+                                        .filter(u => u.role === 'TRƯỞNG NHÓM' && !otherGroupsBusyIds.has((u._id || u.id)?.toString()))
+                                        .map(u => (
+                                            <div
+                                                key={u.id || u._id}
+                                                onClick={() => setFormData({ ...formData, leaderId: u.id || u._id! })}
+                                                className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all ${formData.leaderId === (u.id || u._id) ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-white bg-transparent'
+                                                    }`}
+                                            >
+                                                <div className="flex items-center space-x-3">
+                                                    <img src={u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.name}`} className="w-8 h-8 rounded-full border border-slate-200" alt="" />
+                                                    <div>
+                                                        <p className="text-sm font-bold">{u.name}</p>
+                                                        <p className={`text-[10px] uppercase font-bold ${formData.leaderId === (u.id || u._id) ? 'text-indigo-100' : 'text-slate-400'}`}>
+                                                            {u.role} • {u.department}
+                                                        </p>
+                                                    </div>
                                                 </div>
+                                                {formData.leaderId === (u.id || u._id) && <span className="material-icons text-sm">check_circle</span>}
                                             </div>
-                                            {formData.leaderId === (u.id || u._id) && <span className="material-icons text-sm">check_circle</span>}
-                                        </div>
-                                    ))}
+                                        ))}
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Thanh chọn nhân viên (Thành viên nhóm)</label>
-                                <p className="text-[10px] text-slate-400 mb-2 italic">* Bạn có thể chọn nhiều nhân viên tham gia nhóm này.</p>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Thanh chọn nhân viên (Chỉ hiển thị người chưa có nhóm)</label>
+                                <p className="text-[10px] text-slate-400 mb-2 italic">* Thành viên đã tham gia nhóm khác sẽ không xuất hiện tại đây.</p>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto p-1 custom-scrollbar">
-                                    {sortedUsers.map(u => (
-                                        <div
-                                            key={u.id || u._id}
-                                            onClick={() => toggleMember(u.id || u._id!)}
-                                            className={`flex items-center space-x-3 p-3 rounded-xl cursor-pointer border transition-all ${formData.members.includes(u.id || u._id!)
-                                                ? 'bg-indigo-50 border-indigo-200'
-                                                : 'bg-white border-slate-100 hover:border-indigo-100 hover:bg-slate-50'
-                                                }`}
-                                        >
-                                            <div className={`w-5 h-5 rounded flex items-center justify-center border ${formData.members.includes(u.id || u._id!) ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-300'
-                                                }`}>
-                                                {formData.members.includes(u.id || u._id!) && <span className="material-icons text-xs">check</span>}
+                                    {allUsers
+                                        .filter(u => u.role === 'NHÂN VIÊN' && !otherGroupsBusyIds.has((u._id || u.id)?.toString()))
+                                        .map(u => (
+                                            <div
+                                                key={u.id || u._id}
+                                                onClick={() => toggleMember(u.id || u._id!)}
+                                                className={`flex items-center space-x-3 p-3 rounded-xl cursor-pointer border transition-all ${formData.members.includes(u.id || u._id!)
+                                                    ? 'bg-indigo-50 border-indigo-200'
+                                                    : 'bg-white border-slate-100 hover:border-indigo-100 hover:bg-slate-50'
+                                                    }`}
+                                            >
+                                                <div className={`w-5 h-5 rounded flex items-center justify-center border ${formData.members.includes(u.id || u._id!) ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-300'
+                                                    }`}>
+                                                    {formData.members.includes(u.id || u._id!) && <span className="material-icons text-xs">check</span>}
+                                                </div>
+                                                <img src={u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.name}`} className="w-8 h-8 rounded-full border border-slate-200" alt="" />
+                                                <div className="overflow-hidden">
+                                                    <p className="text-xs font-black text-slate-800 truncate">{u.name}</p>
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase truncate">{u.role}</p>
+                                                </div>
                                             </div>
-                                            <img src={u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.name}`} className="w-8 h-8 rounded-full border border-slate-200" alt="" />
-                                            <div className="overflow-hidden">
-                                                <p className="text-xs font-black text-slate-800 truncate">{u.name}</p>
-                                                <p className="text-[9px] font-bold text-slate-400 uppercase truncate">{u.role}</p>
-                                            </div>
-                                        </div>
-                                    ))}
+                                        ))}
                                 </div>
                             </div>
                         </div>

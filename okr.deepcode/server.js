@@ -155,7 +155,7 @@ async function start() {
   serveFrontend()
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Running on localhost:${PORT}`)
+    console.log(`🚀 Running on http://localhost:${PORT}`)
   })
 }
 

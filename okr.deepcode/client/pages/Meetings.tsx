@@ -104,7 +104,7 @@ const Meetings: React.FC = () => {
             setNewMeeting({ title: '', date: new Date().toISOString().split('T')[0], department: currentUser?.department || '', projectId: '' });
             navigate(`/meetings/${created._id}`);
         } catch (err) {
-            alert('Lỗi tạo cuộc họp');
+            await customConfirm({ title: 'Lỗi', message: 'Lỗi tạo cuộc họp', type: 'danger', isAlert: true });
         }
     };
 
@@ -118,7 +118,7 @@ const Meetings: React.FC = () => {
             setSelectedMeeting(updated);
             return updated;
         } catch (err) {
-            alert('Lỗi lưu sheet');
+            await customConfirm({ title: 'Lỗi', message: 'Lỗi lưu sheet', type: 'danger', isAlert: true });
             throw err;
         }
     };
@@ -138,7 +138,7 @@ const Meetings: React.FC = () => {
             if (selectedMeeting?._id === target._id) setSelectedMeeting(updated);
             setMeetings(prev => prev.map(mm => mm._id === target._id ? updated : mm));
         } catch (err) {
-            alert('Lỗi đóng cuộc họp');
+            await customConfirm({ title: 'Lỗi', message: 'Lỗi đóng cuộc họp', type: 'danger', isAlert: true });
         }
     };
 
@@ -157,7 +157,7 @@ const Meetings: React.FC = () => {
             if (selectedMeeting?._id === target._id) setSelectedMeeting(updated);
             setMeetings(prev => prev.map(mm => mm._id === target._id ? updated : mm));
         } catch (err) {
-            alert('Lỗi mở khóa cuộc họp');
+            await customConfirm({ title: 'Lỗi', message: 'Lỗi mở khóa cuộc họp', type: 'danger', isAlert: true });
         }
     };
 
@@ -166,9 +166,9 @@ const Meetings: React.FC = () => {
             const cloned = await meetingService.cloneMeeting(id, options);
             setMeetings([cloned, ...meetings]);
             setShowCloneOptionsModal({ isOpen: false, meetingId: null });
-            alert('Đã sao chép cuộc họp thành công!');
+            await customConfirm({ title: 'Thành công', message: 'Đã sao chép cuộc họp thành công!', type: 'info', isAlert: true });
         } catch (err) {
-            alert('Lỗi sao chép cuộc họp');
+            await customConfirm({ title: 'Lỗi', message: 'Lỗi sao chép cuộc họp', type: 'danger', isAlert: true });
         }
     };
 
@@ -185,7 +185,7 @@ const Meetings: React.FC = () => {
             await meetingService.deleteMeeting(id);
             setMeetings(meetings.filter(m => m._id !== id));
         } catch (err) {
-            alert('Lỗi xóa cuộc họp');
+            await customConfirm({ title: 'Lỗi', message: 'Lỗi xóa cuộc họp', type: 'danger', isAlert: true });
         }
     };
 
@@ -201,7 +201,7 @@ const Meetings: React.FC = () => {
         // Check mapping
         const isMapped = Object.values(selectedMeeting.mapping || {}).includes(colKey);
         if (isMapped) {
-            alert('Không thể xóa cột đang được mapping sang Task. Hãy gỡ mapping trước.');
+            await customConfirm({ title: 'Thông báo', message: 'Không thể xóa cột đang được mapping sang Task. Hãy gỡ mapping trước.', type: 'warning', isAlert: true });
             return;
         }
 
@@ -232,10 +232,10 @@ const Meetings: React.FC = () => {
             const updatedRows = [...selectedMeeting.rows];
             updatedRows[rowIdx].linkedTaskId = res.task?._id || res.task?.id;
             setSelectedMeeting({ ...selectedMeeting, rows: updatedRows });
-            alert('Đã tạo Task thành công!');
+            await customConfirm({ title: 'Thành công', message: 'Đã tạo Task thành công!', type: 'info', isAlert: true });
         } catch (err: any) {
             console.error(err);
-            alert(err.response?.data?.message || err.message || 'Lỗi tạo Task. Hãy kiểm tra cấu hình Mapping.');
+            await customConfirm({ title: 'Lỗi', message: err.response?.data?.message || err.message || 'Lỗi tạo Task. Hãy kiểm tra cấu hình Mapping.', type: 'danger', isAlert: true });
         }
     };
 
@@ -278,10 +278,10 @@ const Meetings: React.FC = () => {
         setSelectedMeeting({ ...selectedMeeting, rows: updatedRows });
     };
 
-    const handleDeleteRow = (idx: number) => {
+    const handleDeleteRow = async (idx: number) => {
         const row = selectedMeeting.rows[idx];
         if (row.linkedTaskId) {
-            alert('Không thể xóa dòng đã được liên kết với Task. Hãy xóa Task hoặc gỡ liên kết trước (tính năng tương lai).');
+            await customConfirm({ title: 'Thông báo', message: 'Không thể xóa dòng đã được liên kết với Task. Hãy xóa Task hoặc gỡ liên kết trước (tính năng tương lai).', type: 'warning', isAlert: true });
             return;
         }
         const updatedRows = selectedMeeting.rows.filter((_: any, i: number) => i !== idx);
@@ -310,7 +310,7 @@ const Meetings: React.FC = () => {
             setSelectedMeeting(updated);
             setMeetings(prev => prev.map(m => m._id === updated._id ? updated : m));
         } catch (err) {
-            alert('Lỗi thêm cột');
+            await customConfirm({ title: 'Lỗi', message: 'Lỗi thêm cột', type: 'danger', isAlert: true });
         }
     };
 
@@ -356,9 +356,9 @@ const Meetings: React.FC = () => {
             const updated = await meetingService.updateMeeting(selectedMeeting._id, { mapping: tempMapping });
             setSelectedMeeting(updated);
             setShowMappingModal(false);
-            alert('Đã lưu cấu hình Mapping!');
+            await customConfirm({ title: 'Thành công', message: 'Đã lưu cấu hình Mapping!', type: 'info', isAlert: true });
         } catch (err) {
-            alert('Lỗi lưu Mapping');
+            await customConfirm({ title: 'Lỗi', message: 'Lỗi lưu Mapping', type: 'danger', isAlert: true });
         }
     };
 
@@ -401,22 +401,32 @@ const Meetings: React.FC = () => {
                     );
                 }
             case 'user':
-                const selectedUser = users.find(u => u.name === val);
+                const selectedNames = val ? val.split(',').map((s: string) => s.trim()) : [];
                 return (
-                    <div className="flex items-center gap-2 p-2 min-h-[48px] justify-center">
-                        {val ? (
-                            <button
-                                disabled={isClosed}
-                                onClick={() => setShowUserPicker({ rIdx, colKey: col.key })}
-                                className="flex items-center gap-2 bg-white border border-slate-100 rounded-xl px-2 py-1 shadow-sm hover:border-indigo-300 hover:shadow-md transition-all group max-w-full overflow-hidden"
-                            >
-                                <img
-                                    src={selectedUser?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(val)}`}
-                                    className="w-6 h-6 rounded-lg object-cover group-hover:scale-110 transition-transform flex-shrink-0"
-                                    alt="avatar"
-                                />
-                                <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest truncate">{val}</span>
-                            </button>
+                    <div className="flex flex-wrap items-center gap-1.5 p-2 min-h-[48px] justify-center">
+                        {selectedNames.length > 0 ? (
+                            <>
+                                {selectedNames.map((name: string, idx: number) => {
+                                    const u = users.find(user => user.name === name);
+                                    return (
+                                        <div key={idx} className="flex items-center gap-1.5 bg-white border border-slate-100 rounded-lg px-1.5 py-1 shadow-sm max-w-full overflow-hidden">
+                                            <img
+                                                src={u?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`}
+                                                className="w-5 h-5 rounded-md object-cover flex-shrink-0"
+                                                alt="avatar"
+                                            />
+                                            <span className="text-[9px] font-black text-slate-700 uppercase tracking-tight truncate max-w-[80px]">{name}</span>
+                                        </div>
+                                    );
+                                })}
+                                <button
+                                    disabled={isClosed}
+                                    onClick={() => setShowUserPicker({ rIdx, colKey: col.key })}
+                                    className="w-6 h-6 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-500 hover:bg-indigo-100 transition-all flex items-center justify-center shrink-0"
+                                >
+                                    <span className="material-icons text-sm">edit</span>
+                                </button>
+                            </>
                         ) : (
                             <button
                                 disabled={isClosed}
@@ -509,7 +519,7 @@ const Meetings: React.FC = () => {
                             onClick={async () => {
                                 try {
                                     await handleSaveSheet();
-                                    alert('Đã lưu nội dung!');
+                                    await customConfirm({ title: 'Thành công', message: 'Đã lưu nội dung!', type: 'info', isAlert: true });
                                 } catch (e) { }
                             }}
                             className="h-12 px-8 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 shadow-xl shadow-indigo-100 hover:-translate-y-1 active:translate-y-0 transition-all flex items-center gap-3"
@@ -816,49 +826,77 @@ const Meetings: React.FC = () => {
                         <div className="bg-white rounded-[2.5rem] w-full max-w-lg p-10 space-y-8 shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-10 duration-300">
                             <div className="flex flex-col items-center text-center space-y-4">
                                 <div className="w-24 h-24 bg-indigo-50 rounded-[2rem] flex items-center justify-center shadow-inner group overflow-hidden">
-                                    <span className="material-icons text-5xl text-indigo-500 group-hover:scale-110 transition-transform">account_circle</span>
+                                    <span className="material-icons text-5xl text-indigo-500 group-hover:scale-110 transition-transform">people</span>
                                 </div>
                                 <div className="space-y-1">
                                     <h3 className="text-3xl font-black text-slate-800 tracking-tight">Giao người phụ trách</h3>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em]">Danh sách Trưởng phòng & Trưởng nhóm</p>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em]">Chọn nhiều người phụ trách</p>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto px-2 custom-scrollbar">
                                 {users
                                     .filter(u => u.role === 'TRƯỞNG PHÒNG' || u.role === 'TRƯỞNG NHÓM')
-                                    .map(u => (
-                                        <button
-                                            key={u.id || u._id}
-                                            onClick={() => {
-                                                handleCellChange(showUserPicker.rIdx, showUserPicker.colKey, u.name);
-                                                setShowUserPicker(null);
-                                            }}
-                                            className="flex items-center justify-between p-4 bg-slate-50 hover:bg-white hover:shadow-xl hover:scale-[1.02] border-2 border-transparent hover:border-indigo-100 rounded-2xl transition-all group group"
-                                        >
-                                            <div className="flex items-center gap-4">
-                                                <div className="relative">
-                                                    <img src={u.avatar} className="w-14 h-14 rounded-2xl object-cover border-2 border-white shadow-md group-hover:rotate-3 transition-transform" alt={u.name} />
-                                                    <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 border-2 border-white rounded-lg flex items-center justify-center">
-                                                        <span className="material-icons text-white text-[12px]">check</span>
+                                    .map(u => {
+                                        const currentVal = selectedMeeting.rows[showUserPicker.rIdx]?.cells[showUserPicker.colKey] || '';
+                                        const selectedArray = currentVal ? currentVal.split(',').map((s: string) => s.trim()) : [];
+                                        const isSelected = selectedArray.includes(u.name);
+
+                                        return (
+                                            <button
+                                                key={u.id || u._id}
+                                                onClick={() => {
+                                                    let newArray;
+                                                    if (isSelected) {
+                                                        newArray = selectedArray.filter((n: string) => n !== u.name);
+                                                    } else {
+                                                        newArray = [...selectedArray, u.name];
+                                                    }
+                                                    handleCellChange(showUserPicker.rIdx, showUserPicker.colKey, newArray.join(', '));
+                                                }}
+                                                className={`flex items-center justify-between p-4 rounded-2xl transition-all group border-2 ${isSelected ? 'bg-indigo-50 border-indigo-200 shadow-md scale-[1.02]' : 'bg-slate-50 border-transparent hover:bg-white hover:shadow-xl hover:scale-[1.02] hover:border-indigo-100'}`}
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className="relative">
+                                                        <img src={u.avatar} className="w-14 h-14 rounded-2xl object-cover border-2 border-white shadow-md group-hover:rotate-3 transition-transform" alt={u.name} />
+                                                        {isSelected && (
+                                                            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-indigo-600 border-2 border-white rounded-lg flex items-center justify-center animate-in zoom-in">
+                                                                <span className="material-icons text-white text-[12px]">check</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-left">
+                                                        <p className={`text-base font-black leading-tight tracking-tight uppercase transition-colors ${isSelected ? 'text-indigo-700' : 'text-slate-800 group-hover:text-indigo-600'}`}>{u.name}</p>
+                                                        <div className="flex items-center gap-2 mt-0.5">
+                                                            <span className="text-[9px] font-black text-slate-400 bg-slate-200/50 px-2 py-0.5 rounded-md uppercase tracking-widest">{u.role}</span>
+                                                            <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{u.department}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <div className="text-left">
-                                                    <p className="text-base font-black text-slate-800 leading-tight group-hover:text-indigo-600 transition-colors uppercase tracking-tight">{u.name}</p>
-                                                    <div className="flex items-center gap-2 mt-0.5">
-                                                        <span className="text-[9px] font-black text-slate-400 bg-slate-200/50 px-2 py-0.5 rounded-md uppercase tracking-widest">{u.role}</span>
-                                                        <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{u.department}</span>
-                                                    </div>
+                                                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'border-indigo-500 bg-indigo-500' : 'border-slate-200 bg-white'}`}>
+                                                    {isSelected && <span className="material-icons text-white text-xs">check</span>}
                                                 </div>
-                                            </div>
-                                            <span className="material-icons text-slate-200 group-hover:text-indigo-400 transition-colors transform group-hover:translate-x-1 transition-transform">chevron_right</span>
-                                        </button>
-                                    ))}
+                                            </button>
+                                        );
+                                    })}
                             </div>
 
-                            <div className="flex flex-col gap-3 pt-4 border-t border-slate-50">
-                                <button onClick={() => setShowUserPicker(null)} className="w-full py-4 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-slate-600 transition-colors text-center">Hủy bỏ yêu cầu</button>
+                            <div className="flex flex-col gap-3 pt-4 border-t border-slate-100">
+                                <button
+                                    onClick={() => {
+                                        setShowUserPicker(null);
+                                    }}
+                                    className="w-full py-5 bg-indigo-600 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all"
+                                >
+                                    Xác nhận và Hoàn tất
+                                </button>
+                                <button
+                                    onClick={() => setShowUserPicker(null)}
+                                    className="w-full py-4 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-slate-600 transition-colors text-center"
+                                >
+                                    Đóng cửa sổ
+                                </button>
                             </div>
                         </div>
                     </div>

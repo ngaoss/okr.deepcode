@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { attendanceService, AttendanceRecord, AttendanceStatus } from '../services/attendanceService';
 import { getDepartments } from '../services/departmentService';
+import { useConfirm } from '../context/ConfirmContext';
 
 // Helper to get dateKey string YYYY-MM-DD
 function getDateKey(date: Date): string {
@@ -20,6 +21,7 @@ function getDateOffset(offset: number): string {
 
 export const Attendance: React.FC = () => {
     const { user, allUsers } = useAuth();
+    const { confirm: customConfirm } = useConfirm();
     const [status, setStatus] = useState<AttendanceStatus | null>(null);
     const [history, setHistory] = useState<AttendanceRecord[]>([]);
     const [todayTeam, setTodayTeam] = useState<AttendanceRecord[]>([]);
@@ -110,7 +112,7 @@ export const Attendance: React.FC = () => {
             setNote('');
             await loadData();
         } catch (err: any) {
-            alert(err.message || 'Check-in failed');
+            await customConfirm({ title: 'Lỗi', message: err.message || 'Check-in failed', type: 'danger', isAlert: true });
         } finally {
             setActionLoading(false);
         }
@@ -123,7 +125,7 @@ export const Attendance: React.FC = () => {
             setNote('');
             await loadData();
         } catch (err: any) {
-            alert(err.message || 'Check-out failed');
+            await customConfirm({ title: 'Lỗi', message: err.message || 'Check-out failed', type: 'danger', isAlert: true });
         } finally {
             setActionLoading(false);
         }

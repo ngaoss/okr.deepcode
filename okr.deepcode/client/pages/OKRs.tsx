@@ -135,9 +135,9 @@ export const OKRs: React.FC = () => {
     setIsGenerating(false);
   };
 
-  const addManualKR = () => {
+  const addManualKR = async () => {
     if (!manualKR.title) {
-      alert("Vui lòng điền đủ thông tin KR.");
+      await customConfirm({ title: 'Lưu ý', message: "Vui lòng điền đủ thông tin KR.", type: 'warning', isAlert: true });
       return;
     }
     setPendingKRs([...pendingKRs, { ...manualKR, id: `kr-${Date.now()}` }]);
@@ -154,8 +154,8 @@ export const OKRs: React.FC = () => {
 
   const saveOKR = async () => {
     const validationError = validateKRs(pendingKRs);
-    if (!newObjective) return alert('Vui lòng nhập mục tiêu.');
-    if (validationError) return alert(validationError);
+    if (!newObjective) return await customConfirm({ title: 'Lưu ý', message: 'Vui lòng nhập mục tiêu.', type: 'warning', isAlert: true });
+    if (validationError) return await customConfirm({ title: 'Lưu ý', message: validationError, type: 'warning', isAlert: true });
 
     const payload: any = {
       id: editingOKRId || undefined,
@@ -218,7 +218,7 @@ export const OKRs: React.FC = () => {
       resetForm();
     } catch (err: any) {
       console.warn('API save failed', err);
-      alert('Không thể lưu OKR: ' + (err.message || 'Unknown error'));
+      await customConfirm({ title: 'Lỗi', message: 'Không thể lưu OKR: ' + (err.message || 'Unknown error'), type: 'danger', isAlert: true });
     } finally {
       setIsSubmitting(false);
     }
@@ -237,7 +237,7 @@ export const OKRs: React.FC = () => {
       loadOKRs();
       setTimeout(() => setStatusMessage(''), 3000);
     } catch (err) {
-      alert('Không thể phê duyệt');
+      await customConfirm({ title: 'Lỗi', message: 'Không thể phê duyệt', type: 'danger', isAlert: true });
     }
   };
 
@@ -260,7 +260,7 @@ export const OKRs: React.FC = () => {
       loadOKRs();
       setTimeout(() => setStatusMessage(''), 3000);
     } catch (err) {
-      alert('Không thể từ chối');
+      await customConfirm({ title: 'Lỗi', message: 'Không thể từ chối', type: 'danger', isAlert: true });
     }
   };
 
@@ -383,7 +383,7 @@ export const OKRs: React.FC = () => {
       setSelectedIds([]);
       await loadOKRs();
     } catch (err) {
-      alert('Có lỗi xảy ra khi xóa nhiều mục');
+      await customConfirm({ title: 'Lỗi', message: 'Có lỗi xảy ra khi xóa nhiều mục', type: 'danger', isAlert: true });
     } finally {
       setIsLoading(false);
     }
