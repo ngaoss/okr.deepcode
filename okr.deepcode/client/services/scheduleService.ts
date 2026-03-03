@@ -5,10 +5,12 @@ export interface WorkScheduleRecord {
     _id?: string;
     userId: string;
     userName: string;
+    userRole?: string;
     department: string;
     dateKey: string;
     shift: 'FULL_DAY' | 'HALF_DAY' | 'MORNING' | 'AFTERNOON' | 'NIGHT' | 'OFF' | 'UNEXCUSED_ABSENCE' | 'ONLINE';
-    status: 'PENDING' | 'APPROVED' | 'REJECTED';
+    status: 'PENDING' | 'APPROVED' | 'WAITING' | 'COMPLETED' | 'REJECTED';
+    rejectionReason?: string;
     note?: string;
     createdAt?: string;
     updatedAt?: string;
@@ -17,21 +19,31 @@ export interface WorkScheduleRecord {
 export interface ScheduleSummary {
     userId: string;
     userName: string;
+    userRole?: string;
     department: string;
     plannedDays: number;
     offDays: number;
     workDays: number;
     unexcusedAbsences: number;
+    pendingDays: number;
 }
 
 export const scheduleService = {
     // Register or update schedules in bulk
-    bulkUpdate: async (schedules: { dateKey: string; shift: string; note?: string; userId?: string }[]) => {
+    bulkUpdate: async (schedules: { dateKey: string; shift: string; note?: string; userId?: string }[], status?: string) => {
         const response = await apiRequest('/schedules/bulk', {
             method: 'POST',
-            body: JSON.stringify({ schedules })
+            body: JSON.stringify({ schedules, status })
         });
         return (Array.isArray(response) ? response : []) as WorkScheduleRecord[];
+    },
+
+    updateStatus: async (data: { dateKeys: string[]; userId: string; status: string; rejectionReason?: string }) => {
+        const response = await apiRequest('/schedules/status', {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+        return response;
     },
 
     // Get my own schedules

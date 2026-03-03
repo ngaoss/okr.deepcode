@@ -16,7 +16,7 @@ function getDateKey(date = new Date()) {
 // Register or update schedule (Bulk)
 router.post('/bulk', authMiddleware, async (req, res) => {
     try {
-        const { schedules } = req.body; // Array of { dateKey, shift, note }
+        const { schedules, status } = req.body; // Array of { dateKey, shift, note }
         if (!Array.isArray(schedules)) {
             return res.status(400).json({ message: 'Schedules must be an array' });
         }
@@ -27,6 +27,7 @@ router.post('/bulk', authMiddleware, async (req, res) => {
             let finalUserId = req.user.id;
             let finalUserName = req.user.name;
             let finalDept = req.user.department || '';
+            let finalRole = req.user.role;
 
             // If admin/manager is updating for someone else
             if (targetUserId && targetUserId !== req.user.id && ['QUẢN TRỊ VIÊN', 'TRƯỞNG PHÒNG', 'TRƯỞNG NHÓM'].includes(req.user.role)) {
@@ -35,6 +36,7 @@ router.post('/bulk', authMiddleware, async (req, res) => {
                 if (targetUser) {
                     finalUserName = targetUser.name;
                     finalDept = targetUser.department || '';
+                    finalRole = targetUser.role;
                 }
             }
 
@@ -43,10 +45,11 @@ router.post('/bulk', authMiddleware, async (req, res) => {
                 {
                     userId: finalUserId,
                     userName: finalUserName,
+                    userRole: finalRole,
                     department: finalDept,
                     dateKey,
                     shift: shift || 'FULL_DAY',
-                    status: 'APPROVED',
+                    status: status || item.status || 'APPROVED', // allow overriding status
                     note: note || ''
                 },
                 { upsert: true, new: true }
@@ -105,6 +108,13 @@ router.get('/', authMiddleware, async (req, res) => {
             filter.userId = userId;
         }
 
+        if (req.user.role === 'TRƯỞNG NHÓM') {
+            filter.userRole = 'NHÂN VIÊN';
+        } else if (req.user.role === 'TRƯỞNG PHÒNG') {
+            filter.userRole = { $in: ['NHÂN VIÊN', 'TRƯỞNG NHÓM'] };
+        }
+        // QUẢN TRỊ VIÊN doesn't get restricted on userRole
+
         const records = await WorkSchedule.find(filter).sort({ dateKey: 1, userName: 1 });
         res.json(records);
     } catch (err) {
@@ -132,6 +142,12 @@ router.get('/report', authMiddleware, async (req, res) => {
             match.department = String(req.query.department);
         }
 
+        if (req.user.role === 'TRƯỞNG NHÓM') {
+            match.userRole = 'NHÂN VIÊN';
+        } else if (req.user.role === 'TRƯỞNG PHÒNG') {
+            match.userRole = { $in: ['NHÂN VIÊN', 'TRƯỞNG NHÓM'] };
+        }
+
         const schedules = await WorkSchedule.find(match);
 
         // Group by user
@@ -145,9 +161,12 @@ router.get('/report', authMiddleware, async (req, res) => {
                     plannedDays: 0,
                     offDays: 0,
                     workDays: 0,
-                    unexcusedAbsences: 0
+                    unexcusedAbsences: 0,
+                    pendingDays: 0
                 };
             }
+            if (s.status === 'REJECTED') return;
+
             userStats[s.userId].plannedDays++;
             if (s.shift === 'OFF') {
                 userStats[s.userId].offDays++;
@@ -156,11 +175,51 @@ router.get('/report', authMiddleware, async (req, res) => {
             } else {
                 userStats[s.userId].workDays++;
             }
+            if (s.status === 'PENDING') {
+                userStats[s.userId].pendingDays++;
+            }
         });
 
         res.json(Object.values(userStats));
     } catch (err) {
         res.status(500).json({ message: 'Failed to fetch report', error: err.message });
+    }
+});
+
+// Admin/Manager: Update schedule status (Approve / Reject)
+router.put('/status', authMiddleware, async (req, res) => {
+    try {
+        if (!['QUẢN TRỊ VIÊN', 'TRƯỞNG PHÒNG', 'TRƯỞNG NHÓM'].includes(req.user.role)) {
+            return res.status(403).json({ message: 'Forbidden' });
+        }
+
+        const { dateKeys, userId, status, rejectionReason } = req.body;
+        if (!userId || !Array.isArray(dateKeys) || !status) {
+            return res.status(400).json({ message: 'Missing required fields' });
+        }
+
+        // Validate visibility rules
+        const targetUser = await User.findById(userId);
+        if (!targetUser) return res.status(404).json({ message: 'User not found' });
+
+        if (req.user.role === 'TRƯỞNG NHÓM' && targetUser.role !== 'NHÂN VIÊN') {
+            return res.status(403).json({ message: 'Forbidden: You can only approve employees' });
+        }
+        if (req.user.role === 'TRƯỞNG PHÒNG' && targetUser.role === 'QUẢN TRỊ VIÊN') {
+            return res.status(403).json({ message: 'Forbidden: You cannot handle admin schedules' });
+        }
+        if (req.user.role === 'TRƯỞNG PHÒNG' && targetUser.role === 'TRƯỞNG PHÒNG' && targetUser._id.toString() !== req.user.id) {
+            return res.status(403).json({ message: 'Forbidden: Managed by Admin' });
+        }
+
+        await WorkSchedule.updateMany(
+            { userId, dateKey: { $in: dateKeys } },
+            { $set: { status, rejectionReason: rejectionReason || '' } }
+        );
+
+        res.json({ message: 'Status updated successfully' });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to update status', error: err.message });
     }
 });
 

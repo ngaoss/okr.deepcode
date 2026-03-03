@@ -26,6 +26,10 @@ export const WorkSchedulePage: React.FC = () => {
     const [isUpdating, setIsUpdating] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [weekOffset, setWeekOffset] = useState(0);
+    const [isNextWeekEditMode, setIsNextWeekEditMode] = useState(false);
+    const [rejectModal, setRejectModal] = useState<{ userId: string, dateKeys: string[] } | null>(null);
+    const [rejectReason, setRejectReason] = useState('');
+    const [scheduleAlerts, setScheduleAlerts] = useState<WorkScheduleRecord[]>([]);
 
     const shifts: { value: WorkSchedule['shift']; label: string; icon: string; color: string; textColor: string; hours?: string }[] = [
         { value: 'FULL_DAY', label: 'Cả ngày', icon: 'wb_sunny', color: 'bg-indigo-50 border-indigo-200', textColor: 'text-indigo-600', hours: '8:30 - 17:30' },
@@ -53,6 +57,9 @@ export const WorkSchedulePage: React.FC = () => {
             if (user?.role === 'NHÂN VIÊN') {
                 const mine = await scheduleService.getMine(from, to);
                 setMySchedules(mine);
+                const allMine = await scheduleService.getMine();
+                const alerts = allMine.filter(s => s.status === 'PENDING' || s.status === 'REJECTED');
+                setScheduleAlerts(alerts.sort((a, b) => new Date(b.dateKey).getTime() - new Date(a.dateKey).getTime()));
             } else {
                 const [all, summary, depts] = await Promise.all([
                     scheduleService.getAll({ from, to, department: selectedDept }),
@@ -81,7 +88,9 @@ export const WorkSchedulePage: React.FC = () => {
         setIsUpdating(true);
         try {
             const payload = { dateKey, shift, note };
-            await scheduleService.bulkUpdate([{ ...payload, userId: targetUserId || user?.id }]);
+            // Auto setup PENDING status if they are in edit mode and changing their own schedule
+            const status = (isNextWeekEditMode && (!targetUserId || targetUserId === user?.id)) ? 'PENDING' : undefined;
+            await scheduleService.bulkUpdate([{ ...payload, userId: targetUserId || user?.id }], status);
 
             if (targetUserId && targetUserId !== user?.id) {
                 const now = new Date();
@@ -110,7 +119,8 @@ export const WorkSchedulePage: React.FC = () => {
                 shift,
                 userId: user?.id
             }));
-            await scheduleService.bulkUpdate(updates);
+            const status = isNextWeekEditMode ? 'PENDING' : undefined;
+            await scheduleService.bulkUpdate(updates, status);
 
             const mine = await scheduleService.getMine();
             setMySchedules(mine);
@@ -158,6 +168,49 @@ export const WorkSchedulePage: React.FC = () => {
 
         return (
             <div className="space-y-12 animate-fadeIn relative pb-20">
+                {scheduleAlerts.length > 0 && user?.role === 'NHÂN VIÊN' && (
+                    <div className="px-4 space-y-3 mt-4">
+                        {scheduleAlerts.filter(a => a.status === 'PENDING').length > 0 && (
+                            <div className="p-4 rounded-xl flex items-center justify-between border shadow-sm bg-amber-50 border-amber-200">
+                                <div className="flex items-center space-x-4">
+                                    <span className="material-icons text-amber-500">pending_actions</span>
+                                    <div>
+                                        <p className="font-black uppercase tracking-widest text-[9px] mb-0.5 text-amber-600">
+                                            TRẠNG THÁI: ĐANG CHỜ PHÊ DUYỆT
+                                        </p>
+                                        <p className="text-sm font-bold text-amber-900">
+                                            Đơn đăng ký lịch làm việc ({scheduleAlerts.filter(a => a.status === 'PENDING').length} ngày) đang trong hàng chờ quản trị viên xem xét.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        {Object.entries(scheduleAlerts.filter(a => a.status === 'REJECTED').reduce((acc, curr) => {
+                            const reason = curr.rejectionReason || 'Không có lý do';
+                            if (!acc[reason]) acc[reason] = [];
+                            acc[reason].push(curr);
+                            return acc;
+                        }, {} as Record<string, any[]>)).map(([reason, items]) => (
+                            <div key={reason} className="p-4 rounded-xl flex items-center justify-between border shadow-sm bg-red-50 border-red-200">
+                                <div className="flex items-center space-x-4">
+                                    <span className="material-icons text-red-500">do_not_disturb</span>
+                                    <div>
+                                        <p className="font-black uppercase tracking-widest text-[9px] mb-0.5 text-red-600">
+                                            TRẠNG THÁI: BỊ TỪ CHỐI
+                                        </p>
+                                        <p className="text-sm font-bold text-red-900">
+                                            Đơn đăng ký lịch làm việc ({items.length} ngày) đã bị từ chối.
+                                            <span className="ml-2 bg-red-100/50 px-2 py-0.5 rounded text-xs font-black">
+                                                Lý do: {reason}
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 {/* Employee Stats Summary */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 px-4">
                     <div className="bg-white border border-slate-200 p-8 rounded-[3rem] shadow-sm group hover:border-indigo-500/30 transition-all">
@@ -195,7 +248,29 @@ export const WorkSchedulePage: React.FC = () => {
                             <span className="material-icons">chevron_right</span>
                         </button>
                     </div>
-                    <button onClick={() => setWeekOffset(0)} className="px-6 py-2.5 bg-slate-900 text-white rounded-2xl text-[10px] font-black tracking-widest">TUẦN NÀY</button>
+                    <div className="flex items-center space-x-3">
+                        {user?.role !== 'QUẢN TRỊ VIÊN' && (
+                            <>
+                                <button onClick={() => {
+                                    setIsNextWeekEditMode(!isNextWeekEditMode);
+                                    if (!isNextWeekEditMode) setWeekOffset(1);
+                                    else setWeekOffset(0);
+                                }} className={`px-6 py-2.5 rounded-2xl text-[10px] font-black tracking-widest border transition-all ${isNextWeekEditMode ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+                                    {isNextWeekEditMode ? 'HỦY GỬI LỊCH' : 'ĐĂNG KÍ LỊCH LÀM TUẦN SAU'}
+                                </button>
+                                {isNextWeekEditMode && (
+                                    <button onClick={async () => {
+                                        await customConfirm({ title: 'Thành công', message: 'Đã gửi lịch làm tuần sau vào hàng đợi phê duyệt!', type: 'info', isAlert: true });
+                                        setIsNextWeekEditMode(false);
+                                        setWeekOffset(0);
+                                        loadInitialData();
+                                    }} className="px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-[10px] font-black tracking-widest shadow-md hover:bg-indigo-700 transition">
+                                        GỬI PHÊ DUYỆT
+                                    </button>
+                                )}
+                            </>
+                        )}
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-7 gap-6 px-8">
@@ -217,6 +292,7 @@ export const WorkSchedulePage: React.FC = () => {
                             <div
                                 key={dateKey}
                                 onClick={() => {
+                                    if (user?.role === 'NHÂN VIÊN' && !isNextWeekEditMode) return;
                                     if (isMultiSelect) {
                                         toggleDateSelection(dateKey);
                                     } else {
@@ -224,7 +300,7 @@ export const WorkSchedulePage: React.FC = () => {
                                         setTempNote(schedule?.note || '');
                                     }
                                 }}
-                                className={`h-64 p-6 rounded-[3rem] border-2 transition-all cursor-pointer group flex flex-col items-center justify-between shadow-sm relative overflow-hidden ${isMultiSelect && isSelected
+                                className={`h-64 p-6 rounded-[3rem] border-2 transition-all cursor-pointer group flex flex-col items-center justify-between shadow-sm relative overflow-hidden ${(user?.role === 'NHÂN VIÊN' && !isNextWeekEditMode) ? 'cursor-not-allowed opacity-80' : ''} ${isMultiSelect && isSelected
                                     ? 'border-indigo-500 bg-indigo-50 ring-4 ring-indigo-500/10'
                                     : isToday
                                         ? 'border-indigo-500/50 bg-indigo-50 shadow-indigo-500/5'
@@ -241,7 +317,7 @@ export const WorkSchedulePage: React.FC = () => {
 
                                 <div className="w-full flex justify-between items-start">
                                     <span className={`text-2xl font-black tracking-tighter ${isToday ? 'text-indigo-600' : isWeekend ? 'text-slate-400' : 'text-slate-800'}`}>{date.getDate()}</span>
-                                    {schedule?.shift && !isMultiSelect && (
+                                    {schedule?.shift && !isMultiSelect && schedule?.status !== 'REJECTED' && (
                                         <div className={`p-2 rounded-2xl ${shiftObj?.color} border border-slate-100`}>
                                             <span className={`material-icons text-lg ${shiftObj?.textColor}`}>{shiftObj?.icon}</span>
                                         </div>
@@ -249,16 +325,26 @@ export const WorkSchedulePage: React.FC = () => {
                                 </div>
 
                                 <div className="flex flex-col items-center text-center space-y-2">
-                                    <div className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[0.1em] shadow-sm ${schedule?.shift === 'OFF' ? 'text-rose-600 bg-rose-50 border border-rose-100' :
+                                    <div className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[0.1em] shadow-sm ${schedule?.status === 'REJECTED' ? 'text-slate-400 border border-slate-100' : schedule?.shift === 'OFF' ? 'text-rose-600 bg-rose-50 border border-rose-100' :
                                         schedule?.shift === 'UNEXCUSED_ABSENCE' ? 'text-white bg-red-600 border border-red-700' :
                                             schedule?.shift ? 'text-indigo-600 bg-indigo-50 border border-indigo-100' :
                                                 isWeekend ? 'text-slate-400 border border-slate-100' :
                                                     'text-slate-500 border border-slate-200 group-hover:border-indigo-300 transition-all'
                                         }`}>
-                                        {shiftObj?.label || 'Trống'}
+                                        {schedule?.status === 'REJECTED' ? 'Trống' : (shiftObj?.label || 'Trống')}
                                     </div>
 
-                                    {schedule?.shift && shiftObj?.hours && (
+                                    {schedule?.status === 'PENDING' && (
+                                        <div className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-[8px] font-black uppercase tracking-widest absolute bottom-4">Chờ Duyệt</div>
+                                    )}
+                                    {schedule?.status === 'WAITING' && (
+                                        <div className="px-3 py-1 bg-teal-100 text-teal-700 rounded-full text-[8px] font-black uppercase tracking-widest absolute bottom-4">Chờ Áp Dụng</div>
+                                    )}
+                                    {schedule?.status === 'REJECTED' && (
+                                        <div className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-[8px] font-black uppercase tracking-widest absolute bottom-4 cursor-help" title={schedule.rejectionReason}>Từ Chối</div>
+                                    )}
+
+                                    {schedule?.shift && shiftObj?.hours && schedule?.status !== 'REJECTED' && (
                                         <div className="flex items-center text-[10px] font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
                                             <span className="material-icons text-[12px] mr-1">schedule</span>
                                             {shiftObj.hours}
@@ -337,13 +423,13 @@ export const WorkSchedulePage: React.FC = () => {
                             <span className="material-icons text-8xl text-rose-600">warning</span>
                         </div>
                     </div>
-                    <div className="p-8 bg-white border border-slate-200 rounded-[3rem] shadow-sm relative overflow-hidden group hover:border-red-500/30 transition-all">
+                    <div className="p-8 bg-white border border-slate-200 rounded-[3rem] shadow-sm relative overflow-hidden group hover:border-amber-500/30 transition-all">
                         <div className="relative z-10">
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Nghỉ không phép</p>
-                            <p className="text-5xl font-black text-red-600 tracking-tighter">{report.reduce((acc, r) => acc + r.unexcusedAbsences, 0)}</p>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Đang Chờ Duyệt</p>
+                            <p className="text-5xl font-black text-amber-500 tracking-tighter">{report.filter(r => (r.pendingDays || 0) > 0).length}</p>
                         </div>
                         <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                            <span className="material-icons text-8xl text-red-600">error</span>
+                            <span className="material-icons text-8xl text-amber-500">pending_actions</span>
                         </div>
                     </div>
                 </div>
@@ -351,8 +437,8 @@ export const WorkSchedulePage: React.FC = () => {
                 <div className="bg-white rounded-[3.5rem] shadow-sm border border-slate-200 overflow-hidden">
                     <div className="p-12 border-b border-slate-100 flex items-center justify-between">
                         <div>
-                            <h4 className="text-2xl font-black text-slate-900 tracking-tight mb-1">Theo dõi lịch trình theo tháng</h4>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Báo cáo chi tiết từng cá nhân</p>
+                            <h4 className="text-2xl font-black text-slate-900 tracking-tight mb-1">Phê duyệt lịch làm việc</h4>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Lịch làm việc từng cá nhân</p>
                         </div>
                         <div className="flex items-center space-x-4">
                             <div className="relative group">
@@ -384,6 +470,7 @@ export const WorkSchedulePage: React.FC = () => {
                                     <th className="px-10 py-6 font-black text-slate-400 text-[10px] uppercase tracking-widest text-center">Làm việc</th>
                                     <th className="px-10 py-6 font-black text-slate-400 text-[10px] uppercase tracking-widest text-center">Nghỉ</th>
                                     <th className="px-10 py-6 font-black text-slate-400 text-[10px] uppercase tracking-widest text-center">Không phép</th>
+                                    <th className="px-10 py-6 font-black text-slate-400 text-[10px] uppercase tracking-widest text-center">Chờ Duyệt</th>
                                     <th className="px-10 py-6 font-black text-slate-400 text-[10px] uppercase tracking-widest">Trạng thái</th>
                                 </tr>
                             </thead>
@@ -416,8 +503,14 @@ export const WorkSchedulePage: React.FC = () => {
                                         <td className="px-10 py-6 text-center font-black text-emerald-600">{row.workDays}</td>
                                         <td className="px-10 py-6 text-center font-black text-rose-500">{row.offDays}</td>
                                         <td className="px-10 py-6 text-center font-black text-red-600">{row.unexcusedAbsences}</td>
+                                        <td className="px-10 py-6 text-center font-black text-amber-500">{row.pendingDays || 0}</td>
                                         <td className="px-10 py-6">
-                                            {(row.unexcusedAbsences > 0 || row.offDays > 3) ? (
+                                            {(row.pendingDays > 0) ? (
+                                                <span className="px-4 py-1.5 bg-amber-50 border border-amber-100 text-amber-500 rounded-full text-[10px] font-black flex items-center w-fit shadow-sm animate-pulse">
+                                                    <span className="material-icons text-[14px] mr-1.5">pending_actions</span>
+                                                    CẦN DUYỆT
+                                                </span>
+                                            ) : (row.unexcusedAbsences > 0 || row.offDays > 3) ? (
                                                 <span className="px-4 py-1.5 bg-rose-50 border border-rose-100 text-rose-600 rounded-full text-[10px] font-black flex items-center w-fit">
                                                     <span className="material-icons text-[14px] mr-1.5">warning</span>
                                                     CẦN CHÚ Ý
@@ -590,9 +683,35 @@ export const WorkSchedulePage: React.FC = () => {
                                     <p className="text-sm font-black text-slate-400 uppercase tracking-widest mt-1">{adminSelectedUser.department}</p>
                                 </div>
                             </div>
-                            <button onClick={() => setAdminSelectedUser(null)} className="w-16 h-16 rounded-full hover:bg-slate-100 flex items-center justify-center transition-all bg-white border border-slate-200 text-slate-600 active:scale-95">
-                                <span className="material-icons text-2xl">close</span>
-                            </button>
+                            <div className="flex items-center space-x-4">
+                                {(() => {
+                                    const pendingDays = adminUserSchedules.filter(s => s.status === 'PENDING').map(s => s.dateKey);
+                                    if (pendingDays.length === 0) return null;
+                                    return (
+                                        <>
+                                            <button onClick={async () => {
+                                                try {
+                                                    await scheduleService.updateStatus({ dateKeys: pendingDays, userId: adminSelectedUser.userId, status: 'WAITING' });
+                                                    const updated = await scheduleService.getAll({
+                                                        from: formatDateKey(new Date(new Date().getFullYear(), new Date().getMonth() + monthOffset, 1)),
+                                                        to: formatDateKey(new Date(new Date().getFullYear(), new Date().getMonth() + monthOffset + 1, 0)),
+                                                        userId: adminSelectedUser.userId
+                                                    });
+                                                    setAdminUserSchedules(updated);
+                                                } catch (err) { }
+                                            }} className="px-6 py-3.5 bg-indigo-600 text-white rounded-2xl text-[11px] font-black tracking-widest shadow-lg hover:bg-indigo-700 transition active:scale-95">
+                                                DUYỆT LỊCH LÀM ({pendingDays.length})
+                                            </button>
+                                            <button onClick={() => setRejectModal({ userId: adminSelectedUser.userId, dateKeys: pendingDays })} className="px-6 py-3.5 bg-rose-50 text-rose-600 border border-rose-200 rounded-2xl text-[11px] font-black tracking-widest hover:bg-rose-100 transition active:scale-95">
+                                                TỪ CHỐI
+                                            </button>
+                                        </>
+                                    );
+                                })()}
+                                <button onClick={() => setAdminSelectedUser(null)} className="w-16 h-16 rounded-full hover:bg-slate-100 flex items-center justify-center transition-all bg-white border border-slate-200 text-slate-600 active:scale-95">
+                                    <span className="material-icons text-2xl">close</span>
+                                </button>
+                            </div>
                         </div>
                         <div className="flex-1 overflow-y-auto p-12 custom-scrollbar bg-slate-50/30">
                             <div className="grid grid-cols-7 gap-6">
@@ -633,20 +752,26 @@ export const WorkSchedulePage: React.FC = () => {
                                             >
                                                 <div className="w-full flex justify-between items-start">
                                                     <span className={`text-xl font-black ${isToday ? 'text-indigo-600' : isWeekend ? 'text-slate-400' : 'text-slate-800'}`}>{date.getDate()}</span>
-                                                    {sch?.shift && (
+                                                    {(sch?.shift && sch?.status !== 'REJECTED') && (
                                                         <span className={`material-icons text-sm ${shiftObj?.textColor}`}>{shiftObj?.icon}</span>
                                                     )}
                                                 </div>
                                                 <div className="flex flex-col items-center w-full space-y-1">
-                                                    <div className={`w-full py-1.5 rounded-xl text-[9px] font-black text-center border shadow-sm ${sch?.shift === 'OFF' ? 'text-rose-600 bg-rose-50 border-rose-200' :
+                                                    <div className={`w-full py-1.5 rounded-xl text-[9px] font-black text-center border shadow-sm ${sch?.status === 'REJECTED' ? 'text-slate-400 border-slate-100' : sch?.shift === 'OFF' ? 'text-rose-600 bg-rose-50 border-rose-200' :
                                                         sch?.shift === 'UNEXCUSED_ABSENCE' ? 'text-white bg-red-600 border-red-700' :
                                                             sch?.shift ? 'text-emerald-600 bg-emerald-50 border-emerald-200' :
                                                                 'text-slate-400 border-slate-100 group-hover:border-indigo-200 transition-all font-bold'
                                                         } truncate`}>
-                                                        {shiftObj?.label || 'TRỐNG'}
+                                                        {sch?.status === 'REJECTED' ? 'TRỐNG' : (shiftObj?.label || 'TRỐNG')}
                                                     </div>
-                                                    {sch?.shift && shiftObj?.hours && (
+                                                    {sch?.shift && shiftObj?.hours && sch?.status !== 'REJECTED' && (
                                                         <p className="text-[8px] font-bold text-slate-400">{shiftObj.hours}</p>
+                                                    )}
+                                                    {sch?.status === 'PENDING' && (
+                                                        <div className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-[7px] font-black uppercase">Chờ duyệt</div>
+                                                    )}
+                                                    {sch?.status === 'REJECTED' && (
+                                                        <div className="px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-[7px] font-black uppercase cursor-help" title={sch.rejectionReason}>Từ chối</div>
                                                     )}
                                                 </div>
                                             </div>
@@ -654,6 +779,44 @@ export const WorkSchedulePage: React.FC = () => {
                                     });
                                 })()}
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Reject Modal */}
+            {rejectModal && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4 animate-fadeIn">
+                    <div className="bg-white rounded-[3.5rem] w-full max-w-md overflow-hidden shadow-2xl border border-slate-200 p-8 space-y-6">
+                        <h4 className="text-2xl font-black text-slate-900">Lý do từ chối</h4>
+                        <textarea
+                            className="w-full bg-slate-50 border border-slate-200 rounded-3xl p-6 outline-none focus:border-indigo-400 text-sm font-bold min-h-[120px]"
+                            placeholder="Nhập lý do từ chối lịch làm việc..."
+                            value={rejectReason}
+                            onChange={(e) => setRejectReason(e.target.value)}
+                        />
+                        <div className="flex justify-end space-x-3">
+                            <button onClick={() => {
+                                setRejectModal(null);
+                                setRejectReason('');
+                            }} className="px-6 py-3 rounded-2xl text-slate-500 font-bold text-xs hover:bg-slate-100">HỦY</button>
+                            <button onClick={async () => {
+                                if (!rejectReason) {
+                                    await customConfirm({ title: 'Lỗi', message: 'Vui lòng nhập lý do từ chối!', type: 'danger', isAlert: true });
+                                    return;
+                                }
+                                try {
+                                    await scheduleService.updateStatus({ dateKeys: rejectModal.dateKeys, userId: rejectModal.userId, status: 'REJECTED', rejectionReason: rejectReason });
+                                    const updated = await scheduleService.getAll({
+                                        from: formatDateKey(new Date(new Date().getFullYear(), new Date().getMonth() + monthOffset, 1)),
+                                        to: formatDateKey(new Date(new Date().getFullYear(), new Date().getMonth() + monthOffset + 1, 0)),
+                                        userId: rejectModal.userId
+                                    });
+                                    setAdminUserSchedules(updated);
+                                    setRejectModal(null);
+                                    setRejectReason('');
+                                } catch (err) { }
+                            }} className="px-6 py-3 bg-rose-600 text-white rounded-2xl font-black text-xs hover:bg-rose-700 shadow-md">XÁC NHẬN TỪ CHỐI</button>
                         </div>
                     </div>
                 </div>

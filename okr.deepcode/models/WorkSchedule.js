@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 const WorkScheduleSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     userName: { type: String, required: true },
+    userRole: { type: String, default: 'NHÂN VIÊN' },
     department: { type: String, default: '' },
     dateKey: { type: String, required: true, index: true }, // YYYY-MM-DD
     shift: {
@@ -12,9 +13,10 @@ const WorkScheduleSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['PENDING', 'APPROVED', 'REJECTED'],
+        enum: ['PENDING', 'APPROVED', 'WAITING', 'COMPLETED', 'REJECTED'],
         default: 'APPROVED'
     },
+    rejectionReason: { type: String, default: '' },
     note: { type: String, default: '' }
 }, { timestamps: true });
 

@@ -4,9 +4,20 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export const Login: React.FC = () => {
-  const [email, setEmail] = useState('admin@local');
-  const [password, setPassword] = useState('admin1234');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
+
+  React.useEffect(() => {
+    const savedEmail = localStorage.getItem('okr_saved_email');
+    const savedPassword = localStorage.getItem('okr_saved_password');
+    if (savedEmail && savedPassword) {
+      setEmail(savedEmail);
+      setPassword(savedPassword);
+      setRememberMe(true);
+    }
+  }, []);
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -16,6 +27,13 @@ export const Login: React.FC = () => {
     setError('');
     const success = await login(email, password);
     if (success) {
+      if (rememberMe) {
+        localStorage.setItem('okr_saved_email', email);
+        localStorage.setItem('okr_saved_password', password);
+      } else {
+        localStorage.removeItem('okr_saved_email');
+        localStorage.removeItem('okr_saved_password');
+      }
       const from = (location.state as any)?.from?.pathname || '/';
       navigate(from, { replace: true });
     } else {
@@ -32,7 +50,7 @@ export const Login: React.FC = () => {
           </div>
           <h1 className="text-2xl font-black text-center text-slate-800 mb-2">OKR Enterprise Pro</h1>
           <p className="text-center text-slate-500 mb-8 font-medium">Đăng nhập hệ thống quản trị</p>
-          
+
           {error && (
             <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl text-sm font-medium border border-red-100">
               {error}
@@ -41,8 +59,8 @@ export const Login: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="relative">
-              <input 
-                type="email" 
+              <input
+                type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full pl-4 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all peer"
@@ -53,10 +71,10 @@ export const Login: React.FC = () => {
                 Gmail
               </label>
             </div>
-            
+
             <div className="relative">
-              <input 
-                type="password" 
+              <input
+                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full pl-4 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all peer"
@@ -68,17 +86,26 @@ export const Login: React.FC = () => {
               </label>
             </div>
 
-            <button 
+            <div className="flex items-center space-x-2 px-1">
+              <input
+                type="checkbox"
+                id="rememberMe"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer"
+              />
+              <label htmlFor="rememberMe" className="text-sm text-slate-600 font-medium cursor-pointer select-none">
+                Lưu thông tin đăng nhập
+              </label>
+            </div>
+
+            <button
               type="submit"
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-100 transition-all active:scale-95"
             >
               Đăng nhập ngay
             </button>
           </form>
-        </div>
-        
-        <div className="p-6 bg-slate-50 border-t border-slate-100 text-center">
-          <p className="text-sm text-slate-500">Mặc định: admin@local / admin1234</p>
         </div>
       </div>
     </div>
